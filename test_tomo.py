@@ -75,12 +75,20 @@ tan_alt = xr.DataArray(tan_alt, coords=(date, pixel),
 
 
 #%% building jacobian matrix K for several images
+#====choose mesurements
+im_lst = np.arange(280,330,5)
+pix_lst = np.arange(22,128)
+#num of rows of jacobian
+row_len = len(im_lst) * len(pix_lst)
+
 #====define the bin edges (atmosphere grid)
-edges_lat = np.linspace(53, 66, 300)
-edges_lon = np.linspace(150, 157, 300)
-edges_alt = np.arange(50e3, 110e3, 0.5e3)
+edges_lat = np.linspace(tan_lat.isel(date=im_lst).min()-10, 
+                        tan_lat.isel(date=im_lst).min()+10, 10)
+edges_lon = np.linspace(tan_lon.isel(date=im_lst).min()-10,
+                        tan_lon.isel(date=im_lst).min()+10, 10)
+edges_alt = np.arange(25e3, 175e3, 2e3)
 edges = edges_lat, edges_lon, edges_alt
-#====num of columns of jacobian
+#num of columns of jacobian
 col_len = (len(edges_lat)+1)*(len(edges_lon)+1)*(len(edges_alt)+1) 
 
 from geometry_functions import los_points_fix_dl, ecef2lla
@@ -92,10 +100,9 @@ K_row_idx = []
 K_col_idx = []
 K_value = []
 dll = dl * np.ones(nop) #temp
-im_start, im_end = 299, 303
-pix_start, pix_end = 22, 128
+
 measurement_id = 0
-for image in range(im_start, im_end):
+for image in im_lst:#range(im_start, im_end):
     #====generate points of los for all pixels in each image
     #====all points in ecef coordinate xyz
     lx, ly, lz = los_points_fix_dl(sc_look[image], sc_pos[image], dl=dl, nop=nop)    
@@ -103,7 +110,7 @@ for image in range(im_start, im_end):
     los_lat, los_lon, los_alt = ecef2lla(lx, ly, lz)
     
     #====build K
-    for pix in range(pix_start, pix_end):   
+    for pix in pix_lst:#range(pix_start, pix_end):   
         los = los_lat.sel(pixel=pix), los_lon.sel(pixel=pix), los_alt.sel(pixel=pix)
         measurement_idx, grid_idx, pathlength = jacobian_row(dll, edges, los, measurement_id)
         K_row_idx.append(measurement_idx)
@@ -117,24 +124,39 @@ K_value = np.concatenate(K_value) # in meter
 
 #==== create sparse matrix
 from scipy.sparse import coo_matrix
-from scipy.sparse.linalg import inv
-K_coo = coo_matrix((K_value, (K_row_idx, K_col_idx)))
-print(K_coo)
+K_coo = coo_matrix((K_value, (K_row_idx, K_col_idx)), shape = (row_len, col_len))
+#print(K_coo)
 
 #%% inversion
 from oem_functions import linear_oem_sp
 import scipy.sparse as sp
+y = l1.isel(date=im_lst, pixel=pix_lst).data.ravel()
+y[y<0] = 0
+xa = np.ones(col_len) # temp
+Sa = sp.diags([1], shape=(col_len, col_len)) *1 #temp
+Se = sp.diags([1], shape=(measurement_id, measurement_id)) * 1e10 #temporary
+x_hat = linear_oem_sp(K_coo, Se, Sa, y, xa)
 
-xa = np.ones(col_len) * 0 # temp
-Sa = sp.diags([1], shape=(col_len, col_len)) *1e-9 #temp
-Se = np.diag(np.ones(len(pixel))) * 30 #temporary
+result = x_hat.reshape(len(edges_lat)+1, len(edges_lon)+1, len(edges_alt)+1)
+result = xr.DataArray(result[:-1,:-1,:-1], coords=(edges_lat, edges_lon, edges_alt), 
+                      dims=('lat', 'lon', 'alt'))
+
+#%% check residual
+plt.figure()
+#plt.plot(K_coo.dot(x_hat)[:10:]-y[:10:])
+plt.plot(K_coo.dot(x_hat) - y)
+
+plt.figure()
+plt.contourf(edges_lat, edges_alt*1e-3, result.sum(axis=0).T)
+
+
 
 #%% unravel linear indices 
 from oem_functions import unfold_measure_id, unfold_grid_id
 #====test
 measurement_id = 200
 grid_id = 340
-image, pix = unfold_measure_id(measurement_id, im_end, im_start, pix_end, pix_start)
+image, pix = unfold_measure_id(measurement_id, im_lst, pix_lst)
 max_lat, max_lon, max_alt = unfold_grid_id(grid_id, edges_lat, edges_lon, edges_alt)
 
 
@@ -177,8 +199,8 @@ dl = dl * np.ones(nop) #temp
 
 #%% building jacobian matrix K for 1 image
 #====define the bin edges (atmosphere grid)
-edges_lat = np.linspace(los_lat.min(), los_lat.max(), 300)
-edges_lon = np.linspace(los_lon.min(), los_lon.max(), 300)
+edges_lat = np.linspace(los_lat.min(), los_lat.max(), 30)
+edges_lon = np.linspace(los_lon.min(), los_lon.max(), 30)
 edges_alt = np.arange(los_alt.min(), los_alt.max(), 0.5e3)
 edges = edges_lat, edges_lon, edges_alt
 #====num of columns of jacobian

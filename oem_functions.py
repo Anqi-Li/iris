@@ -25,11 +25,11 @@ def linear_oem_sp(K, Se, Sa, y, xa):
         G = inv(K.T.dot(Se_inv).dot(K) + Sa_inv).dot(K.T).dot(Se_inv)
 #        G = spsolve(K.T.dot(Se_inv).dot(K) + Sa_inv, (K.T).dot(Se_inv))
     x_hat = xa + G.dot(y - K.dot(xa))
-    A = G.dot(K)
-    I = sp.identity(len(xa))
-    Ss = (A - I).dot(Sa).dot((A - I).T) # smoothing error
-    Sm = G.dot(Se).dot(G.T) #retrieval noise 
-    return x_hat, A, Ss, Sm
+#    A = G.dot(K)
+#    I = sp.identity(len(xa))
+#    Ss = (A - I).dot(Sa).dot((A - I).T) # smoothing error
+#    Sm = G.dot(Se).dot(G.T) #retrieval noise 
+    return x_hat#, A, Ss, Sm
 
 #%% oem for dense matrix
 def linear_oem(K, Se, Sa, y, xa):
@@ -85,11 +85,11 @@ def jacobian_row(dll, lla_edges, los, pix_idx):
     return measurement_idx, grid_idx, pathlength
                 
 #%% unravel measurement id
-def unfold_measure_id(measurement_id, im_end, im_start, pix_end, pix_start):
-    dims=(im_end-im_start, pix_end-pix_start)
+def unfold_measure_id(measurement_id, im_lst, pix_lst):
+    dims=(len(im_lst), len(pix_lst))
     im_idx, pix_idx = np.unravel_index(measurement_id, dims)
-    image = np.arange(im_start, im_end)[im_idx]
-    pix = np.arange(pix_start, pix_end)[pix_idx]
+    image = im_lst[im_idx]
+    pix = pix_lst[pix_idx]
     return image, pix
 
 #%% unravel grid id
