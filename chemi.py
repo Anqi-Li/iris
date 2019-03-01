@@ -19,15 +19,18 @@ def ozone_sme(m, T, V, J3=8e-3, Js=6.3e-9):
     epsilon = 0.9 #production efficiency of o2(1 delta) from o3
     As = 0.085 # sec-1 Einstein coefficients for o2(1 sigma)
     Ad = 2.58e-4 # sec-1 Einstein coefficients for o2(1 delta)
-    kd = 2.22e-18*(T/300)**0.78 #cm3 sec-1
-    kn = 2e-11*np.exp(-107/T) #cm3 sec-1
-    ko = 2.9e-11*np.exp(-67/T) #cm3 sec-1
+    kd = 2.22e-18 * (T/300)**0.78 #cm3 sec-1
+    kn = 2e-11 * np.exp(-107/T) #cm3 sec-1
+    ko = 2.9e-11 * np.exp(-67/T) #cm3 sec-1
     ks = 2e-15 #cm3 sec-1
     
     o2 = 0.8 * m #assume O2 is 80% of the total air
-    a = ks*m / (ko + 3.76*kn)/(As + ks*m) # temp symbol
-    b = V * (Ad + kd*o2)/Ad # temp symbol
-    o3 = (b - Js*o2*a)/(J3*epsilon*(ko*a + 1))
+    
+    R = ko/(ko + 3.76*kn) #fraction of O(1D) that becomes O2(1 sigma)
+    L = V/Ad * (Ad + kd*o2) #singlet delta O2 loss rate
+    K = ks*m /(As + ks*m)
+    o3 = (L - Js * o2 * K)/(J3 * epsilon * R * K + J3 * epsilon)
+    
     return o3
 
 def ozone_textbook(m, T, V, J3=8e-3):
