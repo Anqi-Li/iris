@@ -180,3 +180,119 @@ def lla2ecef(lat, lon, alt):
     ly = xr.DataArray(ly, coords=lat.coords, dims=lat.dims, attrs=lx.attrs)
     lz = xr.DataArray(lz, coords=lat.coords, dims=lat.dims, attrs=lx.attrs)
     return lx, ly, lz
+
+#%% Path length calculation for a given sun zenith angle (for photosynthesis rate calculation)
+def pathleng(heights, Xi):
+    # inputs: 
+    # heights -- altitdue grid
+    # Xi -- sun zenith angle
+    deltaz = heights[1:] - heights[:-1]
+    deltaz = np.append(deltaz,deltaz[-1])
+    heights = np.append(heights, heights[-1]+deltaz[-1])
+
+    nheights = len(heights)
+    Re = 6370 # km Earth radius
+
+    if Xi==90:
+        	Zt = heights
+    else:
+        	Zt = (Re + heights) * np.sin(Xi*np.pi/180) - Re
+
+    pathl = np.zeros((nheights, nheights))
+    for j in range(nheights):
+        h = heights[j:] 
+        Ztj = Zt[j]
+        pathl[j,j:] = np.sqrt(h**2 + 2*Re*(h-Ztj) - Ztj**2)
+        
+    pathl[:,:-1] = pathl[:, 1:] - pathl[:, 0:-1]
+    pathl = pathl[:-1, :-1]
+    pathl = np.triu(pathl)
+    heights = heights[:-1]
+    nheights=nheights-1
+
+#    if Xi>90:
+#        for j in range(nheights):
+#            if Zt[j] > 0:
+#                I = find(heights<heights[j] & heights>Zt[j])
+#                
+#                if ((isempty(I))):
+#                    I = max(1,j-1)
+#                else:
+#                    I=np.append(max(I[1]-1,1),I)
+#                    
+#                h=heights(I)+deltaz(I)
+#                Ztj=Zt(j);
+#                pathl(j,I) = sqrt(h.*h+2*Re*(h-Ztj)-Ztj*Ztj)
+#                                
+#                if (isempty(find(I==1, 1))):
+#                    pathl(j,I)=(pathl(j,I)-pathl(j,max(I-1,1)))
+#                else:
+#                    J=I(I~=1)
+#                    pathl(j,J)=(pathl(j,J)-pathl(j,max(J-1,1)))
+#                        
+#                
+#            else Zt(j)<=0:
+#                pathl(j,:) = zeros(size(pathl(j,:)))
+#                
+#
+#	pathl1=fliplr(pathl)
+#	nanregion=find(isnan(pathl)==1)
+#	pathl2=(triu((pathl'),1))';
+#	pathl2(nanregion')=zeros(size(nanregion'))
+#    
+#	pathlength=pathl+pathl2
+#	columnpathl=[pathl1 pathl2]
+#    
+    return pathl    
+
+def plot_los(los_lla, sc_pos, tan_lla, edges_lla, im_lst, pix_lst):
+    all_los_lat, all_los_lon, all_los_alt = los_lla
+    tan_lat, tan_lon, tan_alt = tan_lla
+    edges_lat, edges_lon, edges_alt = edges_lla
+    
+    #plot los in 3d to check
+    from mpl_toolkits.mplot3d import Axes3D
+    import matplotlib.pyplot as plt
+    import matplotlib as mpl
+    mpl.rcParams['legend.fontsize'] = 10
+            
+    fig = plt.figure()
+    ax = fig.gca(projection='3d')
+    
+    #plot los
+    for im in im_lst:
+        for pix in pix_lst[::50]:
+            ax.plot(all_los_lon.sel(im=im,pixel=pix), 
+                    all_los_lat.sel(im=im,pixel=pix),
+                    all_los_alt.sel(im=im,pixel=pix))
+    
+    #plot satellite position
+    sx, sy, sz = sc_pos.isel(date=im_lst, xyz=0), sc_pos.isel(date=im_lst, xyz=1), sc_pos.isel(date=im_lst, xyz=2)
+    s_lat, s_lon, s_alt = ecef2lla(sx, sy, sz)
+    ax.scatter(s_lon, s_lat, s_alt)
+    ax.text(s_lon[0], s_lat[0], s_alt[0], 'sc loc')
+    #plot tagent points
+    tlat = tan_lat.isel(date=im_lst, pixel=pix_lst[::50])
+    tlon = tan_lon.isel(date=im_lst, pixel=pix_lst[::50])
+    talt = tan_alt.isel(date=im_lst, pixel=pix_lst[::50])
+    ax.scatter(tlon, tlat, talt)
+    ax.text(tlon[0][0], tlat[0][0], talt[0][0], 'tan point')
+    
+    #other settings of the plot
+    ax.set_xticks(edges_lon)
+    ax.set_yticks(edges_lat)
+    #ax.set_zticks(edges_alt)
+    #ax.xaxis.grid()
+    #ax.yaxis.grid()
+    #ax.zaxis.grid()
+    
+    ax.set_xticklabels([])
+    ax.set_yticklabels([])
+    
+    ax.set(xlabel='lon',
+           ylabel='lat',
+           zlabel='alt')
+    
+    ax.axis('equal')
+    
+    plt.show()

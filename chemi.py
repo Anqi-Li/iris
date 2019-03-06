@@ -30,7 +30,6 @@ def ozone_sme(m, T, V, J3=8e-3, Js=6.3e-9):
     L = V/Ad * (Ad + kd*o2) #singlet delta O2 loss rate
     K = ks*m /(As + ks*m)
     o3 = (L - Js * o2 * K)/(J3 * epsilon * R * K + J3 * epsilon)
-    
     return o3
 
 def ozone_textbook(m, T, V, J3=8e-3):
@@ -45,4 +44,79 @@ def ozone_textbook(m, T, V, J3=8e-3):
     return o3
 
 
+def jfactors(O, O2, O3, N2, z, zenithangle):
+    from scipy.io import loadmat
+    from geometry_functions import pathleng
+    
+    O = O[None,:]
+    O2 = O2[None,:]
+    O3 = O3[None,:]
+    N2 = N2[None,:]
+
+    sigma = loadmat('sigma.mat')
+    sO = sigma['sO']
+    sO2 = sigma['sO2']
+    sO3 = sigma['sO3']
+    sN2 = sigma['sN2']
+    irrad = sigma['irrad']
+    wave = sigma['wave']
+    pathl = pathleng(z, zenithangle) * 1e5  # [km -> cm]
+    tau = np.matmul((np.matmul(sO, O) + np.matmul(sO2, O2) + np.matmul(sO3, O3) + np.matmul(sN2, N2)), pathl.T)
+
+    jO3 = irrad * sO3 * np.exp(-tau)
+    jO2 = irrad * sO2 * np.exp(-tau)
+    jO3[tau == 0] = 0
+    jO2[tau == 0] = 0
+
+    hartrange = (wave > 210) & (wave < 310)
+    srcrange = (wave > 122) & (wave < 175)
+    lyarange = 28  # wavelength = 121.567 nm
+    jhart = np.matmul(hartrange, jO3)
+    jsrc = np.matmul(srcrange, jO2)
+    jlya = jO2[lyarange][:]
+
+    j3 = np.sum(jO3, axis=0)
+    j2 = np.sum(jO2, axis=0)
+
+    jhart = np.squeeze(jhart)
+    jsrc = np.squeeze(jsrc)
+
+    return jhart, jsrc, jlya, j3, j2
+
+
+def gfactor(O2, T, z, zenithangle):
+    from scipy.io import loadmat
+    from geometry_functions import pathleng
+    
+    O2 = O2[None,:]
+
+    alines = loadmat('alines.mat')
+    freq = alines['freq']
+    Sj = alines['Sj']
+    Elow = alines['Elow']
+    # Al = alines['Al']
+    K = 1.3807e-23  # Boltzmann constant [m2kgs-2K-1]
+    C = 299792458  # speed of light [m/s]
+    AMU = 1.66e-27  # atomic mass unit [kg]
+
+    Ad = freq / C * np.sqrt(2 * np.log(2) * K * 298 / 32 / AMU)
+    grid = np.arange(12900, 13170, 0.01)  # frequency interval
+    sigma = np.zeros((len(z), len(grid)))
+
+    def doppler(Ad, niu_niu0):
+        return np.sqrt(np.log(2) / np.pi) / Ad * np.exp(-np.log(2) * niu_niu0 ** 2 / Ad ** 2)
+
+    for zi in range(len(z)):
+        Sjlayer = Sj * 298 / T[zi] * np.exp(1.439 * Elow * (T[zi] - 298) / 298 / T[zi])
+        Adlayer = Ad * np.sqrt(T[zi] / 298)
+
+        for freqi in range(len(freq)):
+            sigma[zi] += Sjlayer[freqi] * doppler(Adlayer[freqi], grid - freq[freqi])
+
+    pathl = pathleng(z, zenithangle) * 1e5  # [km -> cm]
+    tau = np.matmul(np.multiply(sigma.T, O2), pathl.T)
+    gA = np.sum((2.742e13 * sigma.T * np.exp(-tau)), axis=0) / len(freq)
+    gA[tau[1] == 0] = 0
+
+    return gA
     
