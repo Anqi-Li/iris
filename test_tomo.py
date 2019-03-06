@@ -16,7 +16,7 @@ from netCDF4 import num2date
 units = 'days since 1858-11-17 00:00:00.000'
 
 #%% open database file
-db = sql.connect('/home/anqil/Documents/Python/iris/OSIRIS_three_orbits_test.db')
+db = sql.connect('OSIRIS_three_orbits_test.db')
 cur = db.cursor()
 
 orbit = 20900
@@ -83,9 +83,13 @@ row_len = len(im_lst) * len(pix_lst)
 
 #====define the bin edges (atmosphere grid)
 edges_lat = np.linspace(tan_lat.isel(date=im_lst).min()-10, 
-                        tan_lat.isel(date=im_lst).min()+10, 10)
-edges_lon = np.linspace(tan_lon.isel(date=im_lst).min()-10,
-                        tan_lon.isel(date=im_lst).min()+10, 10)
+                        tan_lat.isel(date=im_lst).max()+10, 11)
+edges_lon = np.linspace(tan_lon.isel(date=im_lst).min()-3,
+                        tan_lon.isel(date=im_lst).max()+3, 10)
+#edges_lat = np.linspace(tan_lat.isel(date=im_lst[0]-10, pixel=60), 
+#                        tan_lat.isel(date=im_lst[-1]+10, pixel=60), 11)
+#edges_lon = np.linspace(tan_lon.isel(date=im_lst[0]-3, pixel=60),
+#                        tan_lon.isel(date=im_lst[-1]+3, pixel=60), 10)
 edges_alt = np.arange(25e3, 175e3, 2e3)
 edges = edges_lat, edges_lon, edges_alt
 #num of columns of jacobian
@@ -100,6 +104,7 @@ K_row_idx = []
 K_col_idx = []
 K_value = []
 dll = dl * np.ones(nop) #temp
+all_los_lat, all_los_lon, all_los_alt = [], [], []
 
 measurement_id = 0
 for image in im_lst:#range(im_start, im_end):
@@ -108,6 +113,9 @@ for image in im_lst:#range(im_start, im_end):
     lx, ly, lz = los_points_fix_dl(sc_look[image], sc_pos[image], dl=dl, nop=nop)    
     #====convert xyz to lat lon alt for all points
     los_lat, los_lon, los_alt = ecef2lla(lx, ly, lz)
+    all_los_lat.append(los_lat)
+    all_los_lon.append(los_lon)
+    all_los_alt.append(los_alt)
     
     #====build K
     for pix in pix_lst:#range(pix_start, pix_end):   
@@ -127,6 +135,18 @@ from scipy.sparse import coo_matrix
 K_coo = coo_matrix((K_value, (K_row_idx, K_col_idx)), shape = (row_len, col_len))
 #print(K_coo)
 
+#==== all points in all los
+import pandas as pd
+all_los_lat = xr.concat(all_los_lat, pd.Index(im_lst, name='im'))
+all_los_lon = xr.concat(all_los_lon, pd.Index(im_lst, name='im'))
+all_los_alt = xr.concat(all_los_alt, pd.Index(im_lst, name='im'))
+
+from geometry_functions import plot_los
+plot_los((all_los_lat, all_los_lon, all_los_alt), sc_pos, 
+         (tan_lat, tan_lon, tan_alt), edges, im_lst, pix_lst) 
+
+
+
 #%% inversion
 from oem_functions import linear_oem_sp
 import scipy.sparse as sp
@@ -137,17 +157,61 @@ Sa = sp.diags([1], shape=(col_len, col_len)) *1 #temp
 Se = sp.diags([1], shape=(measurement_id, measurement_id)) * 1e10 #temporary
 x_hat = linear_oem_sp(K_coo, Se, Sa, y, xa)
 
-result = x_hat.reshape(len(edges_lat)+1, len(edges_lon)+1, len(edges_alt)+1)
-result = xr.DataArray(result[:-1,:-1,:-1], coords=(edges_lat, edges_lon, edges_alt), 
+result_tomo = x_hat.reshape(len(edges_lat)+1, len(edges_lon)+1, len(edges_alt)+1)
+result_tomo = xr.DataArray(result_tomo[:-1,:-1,:-1], coords=(edges_lat, edges_lon, edges_alt), 
                       dims=('lat', 'lon', 'alt'))
 
-#%% check residual
+#%plot some tomo results
+#====check residual
 plt.figure()
-#plt.plot(K_coo.dot(x_hat)[:10:]-y[:10:])
-plt.plot(K_coo.dot(x_hat) - y)
+plt.plot(y, label='y')
+plt.plot(K_coo.dot(x_hat), label='Kx')
+
+plt.ylabel('signal')
+plt.legend()
+plt.show()
+
+#====contour plot 
+plt.figure()
+plt.subplot(121)
+plt.contourf(edges_lon, edges_alt*1e-3, result_tomo.sum(axis=0).T, 10)
+ax = plt.gca()
+ax.plot(tan_lon.isel(date=im_lst, pixel=60,), tan_alt.isel(date=im_lst, pixel=60,)*1e-3, color='k', label='tangent point')
+plt.xlabel('longitude')
+plt.ylabel('altitude')
+plt.title('sum over lat')
+plt.legend()
+
+plt.subplot(122)
+plt.contourf(edges_lat, edges_alt*1e-3, result_tomo.sum(axis=1).T, 10)
+ax = plt.gca()
+ax.plot(tan_lat.isel(date=im_lst, pixel=60,), tan_alt.isel(date=im_lst, pixel=60,)*1e-3, color='k', label='tangent point')
+plt.xlabel('latitude')
+#plt.ylabel('altitude')
+plt.title('sum over lon')
+plt.yticks([])
+plt.legend()
+plt.show()
 
 plt.figure()
-plt.contourf(edges_lat, edges_alt*1e-3, result.sum(axis=0).T)
+fig, ax = plt.subplots()
+ax.contourf(edges_lon, edges_lat, result_tomo.sum(axis=2), 10)
+ax.plot(tan_lon.isel(date=im_lst, pixel=60,), tan_lat.isel(date=im_lst, pixel=60,), color='k', label='tangent point')
+ax.axis('equal')
+plt.ylabel('latitude')
+plt.xlabel('longitude')
+plt.title('sum over alt')
+plt.legend()
+#sc_lat, sc_lon, sc_alt = ecef2lla(sc_pos.sel(xyz='x'),sc_pos.sel(xyz='y'),sc_pos.sel(xyz='z'))
+#ax.plot(sc_lon.isel(date=im_lst)+360, sc_lat.isel(date=im_lst))
+plt.show()
+
+
+
+
+
+
+
 
 
 
@@ -158,17 +222,6 @@ measurement_id = 200
 grid_id = 340
 image, pix = unfold_measure_id(measurement_id, im_lst, pix_lst)
 max_lat, max_lon, max_alt = unfold_grid_id(grid_id, edges_lat, edges_lon, edges_alt)
-
-
-
-
-
-
-
-
-
-
-
 
 
 #%% generate points along los

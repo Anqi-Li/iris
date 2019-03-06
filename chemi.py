@@ -8,14 +8,14 @@ Created on Wed Feb 27 15:32:01 2019
 
 import numpy as np
 
-def ozone_sme(m, T, V, J3=8e-3, Js=6.3e-9):
+def ozone_sme(m, T, V, jhart=8e-3, js=6.3e-9):
     #kinetic model presented in Thomas et al (1983)
     #inputs:
     #m: background air density
     #T: temperature in K
     #V: volumn emission 
-    #J3: the number of ozone dissociations per second per molecule
-    #Js: excitation rate of o2(1 sigma) -- per second per molecule
+    #jhart: the number of ozone dissociations (hartly band) per second per molecule
+    #js: excitation rate of o2(1 sigma) -- per second per molecule
     epsilon = 0.9 #production efficiency of o2(1 delta) from o3
     As = 0.085 # sec-1 Einstein coefficients for o2(1 sigma)
     Ad = 2.58e-4 # sec-1 Einstein coefficients for o2(1 delta)
@@ -29,21 +29,29 @@ def ozone_sme(m, T, V, J3=8e-3, Js=6.3e-9):
     R = ko/(ko + 3.76*kn) #fraction of O(1D) that becomes O2(1 sigma)
     L = V/Ad * (Ad + kd*o2) #singlet delta O2 loss rate
     K = ks*m /(As + ks*m)
-    o3 = (L - Js * o2 * K)/(J3 * epsilon * R * K + J3 * epsilon)
+    o3 = (L - js * o2 * K)/(jhart * epsilon * R * K + jhart * epsilon)
     return o3
 
-def ozone_textbook(m, T, V, J3=8e-3):
+def ozone_textbook(m, T, V, jhart=8e-3):
     #kinetic model presented in textbook (aeronomy of the middle atmosphere) p203
     epsilon = 0.9 #production efficiency of o2(1 delta) from o3
     Ad = 2.58e-4 # sec-1 Einstein coefficients for o2(1 delta)   
     kd = 2.22e-18*(T/300)**0.78 #cm3 sec-1
     o2 = 0.8*m
     
-    F = epsilon*J3*(Ad + kd*o2)
+    F = epsilon*jhart*(Ad + kd*o2)
     o3 = V/Ad/F
     return o3
 
-
+def oxygen_atom(m, T, o3, j3):
+    #only works for day, not night
+    #(smith et al. 2011)
+    o2 = 0.2*m
+    ka = 6e-34*(300/T)**2.4
+    kb = 8e-12 * np.exp(-2060 / T)
+    o = j3 * o3 / (ka * o2 * m - kb * o3)
+    return o
+    
 def jfactors(O, O2, O3, N2, z, zenithangle):
     from scipy.io import loadmat
     from geometry_functions import pathleng
@@ -116,7 +124,7 @@ def gfactor(O2, T, z, zenithangle):
     pathl = pathleng(z, zenithangle) * 1e5  # [km -> cm]
     tau = np.matmul(np.multiply(sigma.T, O2), pathl.T)
     gA = np.sum((2.742e13 * sigma.T * np.exp(-tau)), axis=0) / len(freq)
-    gA[tau[1] == 0] = 0
+#    gA[tau[1] == 0] = 0
 
     return gA
     
