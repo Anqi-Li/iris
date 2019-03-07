@@ -21,7 +21,7 @@ db = sql.connect('OSIRIS_three_orbits_test.db')
 cur = db.cursor()
 
 orbit = 20900
-num_of_orbits = 4
+num_of_orbits = 2
 ch = 2
 return_column = ('data, mjd, look_ecef, sc_position_ecef, latitude, longitude, altitude')
                  
@@ -138,12 +138,12 @@ plt.show()
 from oem_functions import linear_oem
 from geometry_functions import pathl1d_iris
 
-z = np.arange(40e3, 110e3, 2e3)
+z = np.arange(40e3, 110e3, 2e3) # m
 z_top = z[-1] + 2e3
 result_1d = np.zeros((len(im_lst), len(z)))
 xa = np.ones(len(z)) # temp
-Sa = np.diag(np.ones(len(z))) #*1e-9 #temp
-Se = np.diag(np.ones(len(pixel))) * 1e10 #30 #temporary
+Sa = np.diag(np.ones(len(z))) *1e-9 #temp
+Se = np.diag(np.ones(len(pixel))) * 30# 1e10 #30 #temporary
 for i in range(len(im_lst)):
     h = tan_alt.isel(date=im_lst[i]).data
     K = pathl1d_iris(h, z, z_top)    
@@ -191,10 +191,16 @@ M = interp1d(zMsis*1e3, NMsis[:,month,lat], fill_value='extrapolate')(z)
 zenithangle = 10
 gA = gfactor(0.2*M, T, z, zenithangle)
 plt.plot(gA,z)
+plt.title('gA')
 
 #%%
-
 plt.figure()
+plt.plot(result_1d[0],z)
+plt.axvline(x=0, linestyle=':', color='k')
+plt.xlabel('volumn emission rate')
+plt.ylabel('z')
+
+plt.figure(figsize=(10, 5))
 ax0 = plt.subplot(131)
 ax1 = plt.subplot(132)
 ax2 = plt.subplot(133)
@@ -207,22 +213,29 @@ ax0.set_xscale('log')
 ax1.set(xlabel='Jhart')
 ax2.set(xlabel='oxygen atom')
 
-o3 = ozone_sme(M, T, result_1d[0], jhart=8e-1, js=gA)
+#iter 1
+
+#o3 = ozone_sme(M, T, result_1d[0], jhart=8e-3, js=gA)
+o3 = ozone_textbook(M, T, result_1d[0], jhart=8e-3)
 ax0.plot(o3,z, label='1')
 ax1.plot(8e-3 * np.ones(z.shape), z, label='1')
 ax2.plot(0*np.ones(z.shape), z, label='1')
 plt.legend()
 
+#iter 2
 jhart, jsrc, jlya, j3, j2 = jfactors(O=0*M, O2=0.2*M, O3=o3.data, N2=0.8*M, z=z, zenithangle=zenithangle)
-o3 = ozone_sme(M, T, result_1d[0], jhart, gA)
+#o3 = ozone_sme(M, T, result_1d[0], jhart, gA)
+o3 = ozone_textbook(M, T, result_1d[0], jhart=jhart)
 ax0.plot(o3,z, label='2')
 ax1.plot(jhart, z, label='2')
 ax2.plot(0*np.ones(z.shape), z, label='2')
 plt.legend()
 
+#iter 3
 o = oxygen_atom(M, T, o3, j3)
 jhart, jsrc, jlya, j3, j2 = jfactors(O=o.data, O2=0.2*M, O3=o3.data, N2=0.8*M, z=z, zenithangle=zenithangle)
-o3 = ozone_sme(M, T, result_1d[0], jhart, gA)
+#o3 = ozone_sme(M, T, result_1d[0], jhart, gA)
+o3 = ozone_textbook(M, T, result_1d[0], jhart=jhart)
 ax0.plot(o3,z, label='3')
 ax1.plot(jhart, z, label='3')
 ax2. plot(o, z, label='3')

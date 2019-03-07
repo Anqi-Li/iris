@@ -39,7 +39,7 @@ def pathl1d_iris(h, z=np.arange(40e3, 110e3, 1e3), z_top=150e3):
     pathl = pl - pathl
     pathl = 2*pathl # in meter        
     
-    return pathl
+    return pathl # in meter
 
 
 #%% copy paste from matlab code

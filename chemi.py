@@ -73,8 +73,8 @@ def jfactors(O, O2, O3, N2, z, zenithangle):
 
     jO3 = irrad * sO3 * np.exp(-tau)
     jO2 = irrad * sO2 * np.exp(-tau)
-    jO3[tau == 0] = 0
-    jO2[tau == 0] = 0
+#    jO3[tau == 0] = 0
+#    jO2[tau == 0] = 0
 
     hartrange = (wave > 210) & (wave < 310)
     srcrange = (wave > 122) & (wave < 175)
@@ -95,6 +95,8 @@ def jfactors(O, O2, O3, N2, z, zenithangle):
 def gfactor(O2, T, z, zenithangle):
     from scipy.io import loadmat
     from geometry_functions import pathleng
+    import sys
+    sys.path.append('..')
     
     O2 = O2[None,:]
 
