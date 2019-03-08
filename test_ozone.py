@@ -195,7 +195,7 @@ plt.title('gA')
 
 #%%
 plt.figure()
-plt.plot(result_1d[0],z)
+plt.plot(result_1d[0],z, '*')
 plt.axvline(x=0, linestyle=':', color='k')
 plt.xlabel('volumn emission rate')
 plt.ylabel('z')
@@ -215,8 +215,8 @@ ax2.set(xlabel='oxygen atom')
 
 #iter 1
 
-#o3 = ozone_sme(M, T, result_1d[0], jhart=8e-3, js=gA)
-o3 = ozone_textbook(M, T, result_1d[0], jhart=8e-3)
+o3 = ozone_sme(M, T, result_1d[0], jhart=8e-3, js=gA)
+#o3 = ozone_textbook(M, T, result_1d[0], jhart=8e-3)
 ax0.plot(o3,z, label='1')
 ax1.plot(8e-3 * np.ones(z.shape), z, label='1')
 ax2.plot(0*np.ones(z.shape), z, label='1')
@@ -224,8 +224,8 @@ plt.legend()
 
 #iter 2
 jhart, jsrc, jlya, j3, j2 = jfactors(O=0*M, O2=0.2*M, O3=o3.data, N2=0.8*M, z=z, zenithangle=zenithangle)
-#o3 = ozone_sme(M, T, result_1d[0], jhart, gA)
-o3 = ozone_textbook(M, T, result_1d[0], jhart=jhart)
+o3 = ozone_sme(M, T, result_1d[0], jhart, gA)
+#o3 = ozone_textbook(M, T, result_1d[0], jhart=jhart)
 ax0.plot(o3,z, label='2')
 ax1.plot(jhart, z, label='2')
 ax2.plot(0*np.ones(z.shape), z, label='2')
@@ -234,16 +234,62 @@ plt.legend()
 #iter 3
 o = oxygen_atom(M, T, o3, j3)
 jhart, jsrc, jlya, j3, j2 = jfactors(O=o.data, O2=0.2*M, O3=o3.data, N2=0.8*M, z=z, zenithangle=zenithangle)
-#o3 = ozone_sme(M, T, result_1d[0], jhart, gA)
-o3 = ozone_textbook(M, T, result_1d[0], jhart=jhart)
+o3 = ozone_sme(M, T, result_1d[0], jhart, gA)
+#o3 = ozone_textbook(M, T, result_1d[0], jhart=jhart)
 ax0.plot(o3,z, label='3')
 ax1.plot(jhart, z, label='3')
 ax2. plot(o, z, label='3')
 plt.legend()
 
+#iter 4
+o = oxygen_atom(M, T, o3, j3)
+jhart, jsrc, jlya, j3, j2 = jfactors(O=o.data, O2=0.2*M, O3=o3.data, N2=0.8*M, z=z, zenithangle=zenithangle)
+o3 = ozone_sme(M, T, result_1d[0], jhart, gA)
+#o3 = ozone_textbook(M, T, result_1d[0], jhart=jhart)
+ax0.plot(o3,z, label='4')
+ax1.plot(jhart, z, label='4')
+ax2. plot(o, z, label='4')
+plt.legend()
 
+#iter 5
+o = oxygen_atom(M, T, o3, j3)
+jhart, jsrc, jlya, j3, j2 = jfactors(O=o.data, O2=0.2*M, O3=o3.data, N2=0.8*M, z=z, zenithangle=zenithangle)
+o3 = ozone_sme(M, T, result_1d[0], jhart, gA)
+#o3 = ozone_textbook(M, T, result_1d[0], jhart=jhart)
+ax0.plot(o3,z, label='5')
+ax1.plot(jhart, z, label='5')
+ax2. plot(o, z, label='5')
+plt.legend()
 
+#iter 6
+o = oxygen_atom(M, T, o3, j3)
+jhart, jsrc, jlya, j3, j2 = jfactors(O=o.data, O2=0.2*M, O3=o3.data, N2=0.8*M, z=z, zenithangle=zenithangle)
+o3 = ozone_sme(M, T, result_1d[0], jhart, gA)
+#o3 = ozone_textbook(M, T, result_1d[0], jhart=jhart)
+ax0.plot(o3,z, label='6')
+ax1.plot(jhart, z, label='6')
+ax2. plot(o, z, label='6')
+plt.legend()
 
+#iter 6
+o = oxygen_atom(M, T, o3, j3)
+jhart, jsrc, jlya, j3, j2 = jfactors(O=o.data, O2=0.2*M, O3=o3.data, N2=0.8*M, z=z, zenithangle=zenithangle)
+o3 = ozone_sme(M, T, result_1d[0], jhart, gA)
+#o3 = ozone_textbook(M, T, result_1d[0], jhart=jhart)
+ax0.plot(o3,z, label='6')
+ax1.plot(jhart, z, label='6')
+ax2. plot(o, z, label='6')
+plt.legend()
+
+#iter 6
+o = oxygen_atom(M, T, o3, j3)
+jhart, jsrc, jlya, j3, j2 = jfactors(O=o.data, O2=0.2*M, O3=o3.data, N2=0.8*M, z=z, zenithangle=zenithangle)
+o3 = ozone_sme(M, T, result_1d[0], jhart, gA)
+#o3 = ozone_textbook(M, T, result_1d[0], jhart=jhart)
+ax0.plot(o3,z, label='6')
+ax1.plot(jhart, z, label='6')
+ax2. plot(o, z, label='6')
+plt.legend()
 
 #%%
 o3 = ozone_sme(M, T, result_1d)

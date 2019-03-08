@@ -68,7 +68,7 @@ def jfactors(O, O2, O3, N2, z, zenithangle):
     sN2 = sigma['sN2']
     irrad = sigma['irrad']
     wave = sigma['wave']
-    pathl = pathleng(z, zenithangle) * 1e5  # [km -> cm]
+    pathl = pathleng(z, zenithangle) * 1e3  # [m -> cm]
     tau = np.matmul((np.matmul(sO, O) + np.matmul(sO2, O2) + np.matmul(sO3, O3) + np.matmul(sN2, N2)), pathl.T)
 
     jO3 = irrad * sO3 * np.exp(-tau)

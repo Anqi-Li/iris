@@ -29,7 +29,7 @@ def linear_oem_sp(K, Se, Sa, y, xa):
 #    I = sp.identity(len(xa))
 #    Ss = (A - I).dot(Sa).dot((A - I).T) # smoothing error
 #    Sm = G.dot(Se).dot(G.T) #retrieval noise 
-    return x_hat#, A, Ss, Sm
+    return x_hat, G#, A, Ss, Sm
 
 #%% oem for dense matrix
 def linear_oem(K, Se, Sa, y, xa):

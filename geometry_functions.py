@@ -37,9 +37,9 @@ def pathl1d_iris(h, z=np.arange(40e3, 110e3, 1e3), z_top=150e3):
                 
     pathl = np.append(np.zeros((len(h),1)), pl[:,:-1], axis=1)
     pathl = pl - pathl
-    pathl = 2*pathl # in meter        
+    pathl = 2*pathl        
     
-    return pathl # in meter
+    return pathl 
 
 
 #%% copy paste from matlab code
@@ -148,9 +148,11 @@ def k_min_max(sc_pos, lat, lon, alt, r_top=150e3):
 
 #%% 
 def los_points_fix_dl(look, pos, nop=300, dl=6e3, d_start=1730e3):
-    lx = np.empty((nop, len(look)))
-    ly = np.empty((nop, len(look)))
-    lz = np.empty((nop, len(look)))
+    lx = np.empty((nop, len(look.pixel)))
+    ly = np.empty((nop, len(look.pixel)))
+    lz = np.empty((nop, len(look.pixel)))
+    
+    
     for i in range(nop):
         lx[i,:] = pos.sel(xyz='x') + (i+d_start/dl)*look.sel(xyz='x')*dl 
         ly[i,:] = pos.sel(xyz='y') + (i+d_start/dl)*look.sel(xyz='y')*dl
