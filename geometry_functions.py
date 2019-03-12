@@ -193,7 +193,7 @@ def pathleng(heights, Xi):
     heights = np.append(heights, heights[-1]+deltaz[-1])
 
     nheights = len(heights)
-    Re = 6370 # km Earth radius
+    Re = 6370e3 # m Earth radius
 
     if Xi==90:
         	Zt = heights
@@ -298,3 +298,34 @@ def plot_los(los_lla, sc_pos, tan_lla, edges_lla, im_lst, pix_lst):
     ax.axis('equal')
     
     plt.show()
+    
+
+def change_of_basis(e1, e2, e3, v):
+    #e1, e2, e3 are the new base vectors 
+    #v is the coordinate with respect to the original base vectors
+    #v_new is the coordinate with respect to the new base vectors
+    #normalize all base vectors to unit length 1
+    e1 = e1/np.linalg.norm(e1)
+    e2 = e2/np.linalg.norm(e2)
+    e3 = e3/np.linalg.norm(e3)
+    
+    Q = np.array([e1, e2, e3]).T
+    #print('Transformed to original system with \n Q={}'.format(Q))
+    
+    v_new = np.linalg.solve(Q,v)
+    #print('The vector in the new coordinates \n v_new={}'.format(v_new))
+
+    if type(v) is xr.core.dataarray.DataArray:
+        v_new = xr.DataArray(v_new, coords=v.coords, dims=v.dims)
+    return v_new
+
+def cart2sphe(e1, e2, e3):
+    #from cartesian system to geocentric spherical corrdinate system
+    #(ex. 
+    #alpha: across-track angle, 
+    #beta: along-track angle, 
+    #rho: distance from origin)
+    alpha = np.arctan(e1/e3)
+    beta = np.arctan(e2/e3)
+    rho = np.sqrt(e1**2 + e2**2 + e3**2) - 6371e3
+    return alpha, beta, rho

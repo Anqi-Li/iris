@@ -7,6 +7,7 @@ Created on Wed Feb 27 15:32:01 2019
 """
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 def ozone_sme(m, T, V, jhart=8e-3, js=6.3e-9):
     #kinetic model presented in Thomas et al (1983)
@@ -73,8 +74,8 @@ def jfactors(O, O2, O3, N2, z, zenithangle):
 
     jO3 = irrad * sO3 * np.exp(-tau)
     jO2 = irrad * sO2 * np.exp(-tau)
-#    jO3[tau == 0] = 0
-#    jO2[tau == 0] = 0
+    jO3[tau == 0] = 0
+    jO2[tau == 0] = 0
 
     hartrange = (wave > 210) & (wave < 310)
     srcrange = (wave > 122) & (wave < 175)
