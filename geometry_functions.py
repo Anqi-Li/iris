@@ -183,7 +183,7 @@ def lla2ecef(lat, lon, alt):
     lz = xr.DataArray(lz, coords=lat.coords, dims=lat.dims, attrs=lx.attrs)
     return lx, ly, lz
 
-#%% Path length calculation for a given sun zenith angle (for photosynthesis rate calculation)
+#%% Path length calculation for a given sun zenith angle (for photolysis rate calculation)
 def pathleng(heights, Xi):
     # inputs: 
     # heights -- altitdue grid

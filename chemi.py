@@ -9,7 +9,7 @@ Created on Wed Feb 27 15:32:01 2019
 import numpy as np
 import matplotlib.pyplot as plt
 
-def ozone_sme(m, T, V, jhart=8e-3, js=6.3e-9):
+def ozone_sme(M, T, V, jhart, js):
     #kinetic model presented in Thomas et al (1983)
     #inputs:
     #m: background air density
@@ -25,11 +25,11 @@ def ozone_sme(m, T, V, jhart=8e-3, js=6.3e-9):
     ko = 2.9e-11 * np.exp(-67/T) #cm3 sec-1
     ks = 2e-15 #cm3 sec-1
     
-    o2 = 0.8 * m #assume O2 is 80% of the total air
+    o2 = 0.8 * M #assume O2 is 80% of the total air
     
     R = ko/(ko + 3.76*kn) #fraction of O(1D) that becomes O2(1 sigma)
     L = V/Ad * (Ad + kd*o2) #singlet delta O2 loss rate
-    K = ks*m /(As + ks*m)
+    K = ks*M /(As + ks*M)
     o3 = (L - js * o2 * K)/(jhart * epsilon * R * K + jhart * epsilon)
     return o3
 
@@ -69,7 +69,7 @@ def jfactors(O, O2, O3, N2, z, zenithangle):
     sN2 = sigma['sN2']
     irrad = sigma['irrad']
     wave = sigma['wave']
-    pathl = pathleng(z, zenithangle) * 1e3  # [m -> cm]
+    pathl = pathleng(z, zenithangle) * 1e2  # [m -> cm]
     tau = np.matmul((np.matmul(sO, O) + np.matmul(sO2, O2) + np.matmul(sO3, O3) + np.matmul(sN2, N2)), pathl.T)
 
     jO3 = irrad * sO3 * np.exp(-tau)
