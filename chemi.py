@@ -185,6 +185,10 @@ def ozone_mlynczak(ver_o2delta, T, m, o, o3, Jhart, Jlya, Jsrc, gA):
                                     ) * (qy_hart*Jhart/loss_o1d)
     o3 = (o2delta - o2delta_from_gA - o2delta_from_Jo2)/o2delta_from_Jo3_factor
     return o3
+
+
+
+    
     
     
     
