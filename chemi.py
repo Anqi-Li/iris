@@ -130,4 +130,61 @@ def gfactor(O2, T, z, zenithangle):
 #    gA[tau[1] == 0] = 0
 
     return gA
+
+def q_o2sig(n2, co2, o2, o, o3):
+    k_n2 = 2.1e-15
+    k_co2 = 4.2e-13
+    k_o3 = 2.2e-11
+    k_o = 8e-14
+    k_o2 = 3.9e-17
+    return n2*k_n2 + co2*k_co2 + o3*k_o3 + o*k_o + o2*k_o2
+
+def q_o2delta(T, o2, n2, o):
+    k_o2 = 3.6e-18*np.exp(-220/T)
+    k_n2 = 1e-20
+    k_o = 1.3e-16
+    return k_o2*o2 + k_n2*n2 + k_o*o
+
+def q_o1d(T, n2, o2):
+    k_n2 = 1.8e-11*np.exp(110/T)
+    k_o2 = 3.2e-11*np.exp(70/T)
+    return k_n2*n2 + k_o2*o2
+
+def ozone_mlynczak(ver_o2delta, T, m, o, o3, Jhart, Jlya, Jsrc, gA):
+    o2 = 0.21*m
+    n2 = 0.78*m
+    co2 = 405e-6*m
+    
+    Q_o1d = q_o1d(T, n2, o2)
+    Q_o2delta = q_o2delta(T, o2, n2, o=0)
+    Q_o2sig = q_o2sig(n2, co2, o2, o=0, o3=0)
+    
+    A_o2sig = 0.0758
+    A_o2delta = 2.58e-4
+    A_o1d = 0 #?
+    
+    k = 3.2e-11*np.exp(70/T) # o1d + o2 -> o + o2sig
+    
+    o2delta = ver_o2delta/A_o2delta
+    loss_o2delta = Q_o2delta + A_o2delta
+    loss_o2sig = Q_o2sig + A_o2sig
+    loss_o1d = Q_o1d + A_o1d
+    
+    qy_hart = 0.9 #quatumn yield
+    qy_lya = 0.44
+    qy_src = 1 
+    eff_o1d_o2sig = 0.77 #efficiency 
+    
+    o2delta_from_gA = (Q_o2sig/loss_o2delta) * (gA*o2/loss_o2sig)
+    o2delta_from_Jo2 = (Q_o2sig/loss_o2delta
+                        ) * (eff_o1d_o2sig*k*o2/loss_o2sig
+                        ) * (qy_lya*Jlya*o2 + qy_src*Jsrc*o2)/loss_o1d
+    o2delta_from_Jo3_factor = (qy_hart*Jhart/loss_o2delta
+                               ) + (Q_o2sig/loss_o2delta
+                                    ) * (eff_o1d_o2sig*k*o2/loss_o2sig
+                                    ) * (qy_hart*Jhart/loss_o1d)
+    o3 = (o2delta - o2delta_from_gA - o2delta_from_Jo2)/o2delta_from_Jo3_factor
+    return o3
+    
+    
     
