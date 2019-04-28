@@ -15,3 +15,7 @@ while orbit<=32400:
     insert_osiris_db(db_filename, orbit)
     #next orbit
     orbit += 1
+    
+    
+    
+    

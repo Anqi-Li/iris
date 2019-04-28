@@ -147,11 +147,26 @@ def k_min_max(sc_pos, lat, lon, alt, r_top=150e3):
     return k_min, k_max
 
 #%% 
+def los_points_fix_dl2(look, pos, nop=300, dl=6e3, d_start=1730e3):
+    lx = np.empty(nop)
+    ly = np.empty(nop)
+    lz = np.empty(nop)
+    
+    for i in range(nop):
+        lx[i] = pos.sel(xyz='x') + (i+d_start/dl)*look.sel(xyz='x')*dl 
+        ly[i] = pos.sel(xyz='y') + (i+d_start/dl)*look.sel(xyz='y')*dl
+        lz[i] = pos.sel(xyz='z') + (i+d_start/dl)*look.sel(xyz='z')*dl
+    #lx = xr.DataArray(lx, coords=[np.arange(nop)], dims=('n',), attrs={'units':'meter'})
+    #ly = xr.DataArray(ly, coords=lx.coords, attrs=lx.attrs)
+    #lz = xr.DataArray(lz, coords=lx.coords, attrs=lx.attrs)
+    return lx, ly, lz
+
+    
 def los_points_fix_dl(look, pos, nop=300, dl=6e3, d_start=1730e3):
+    
     lx = np.empty((nop, len(look.pixel)))
     ly = np.empty((nop, len(look.pixel)))
     lz = np.empty((nop, len(look.pixel)))
-    
     
     for i in range(nop):
         lx[i,:] = pos.sel(xyz='x') + (i+d_start/dl)*look.sel(xyz='x')*dl 
@@ -161,7 +176,6 @@ def los_points_fix_dl(look, pos, nop=300, dl=6e3, d_start=1730e3):
                       dims=('n', 'pixel'), attrs={'units':'meter'})
     ly = xr.DataArray(ly, coords=lx.coords, dims=lx.dims, attrs=lx.attrs)
     lz = xr.DataArray(lz, coords=lx.coords, dims=lx.dims, attrs=lx.attrs)
-
     return lx, ly, lz
 
 #%%convert xyz to lon lat alt for all points
