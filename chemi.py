@@ -47,7 +47,7 @@ def ozone_textbook(m, T, V, jhart=8e-3):
 def oxygen_atom(m, T, o3, j3):
     #only works for day, not night
     #(smith et al. 2011)
-    o2 = 0.2*m
+    o2 = 0.21*m
     ka = 6e-34*(300/T)**2.4
     kb = 8e-12 * np.exp(-2060 / T)
     o = j3 * o3 / (ka * o2 * m - kb * o3)
@@ -74,8 +74,8 @@ def jfactors(O, O2, O3, N2, z, zenithangle):
 
     jO3 = irrad * sO3 * np.exp(-tau)
     jO2 = irrad * sO2 * np.exp(-tau)
-    jO3[tau == 0] = 0
-    jO2[tau == 0] = 0
+#    jO3[tau == 0] = 0
+#    jO2[tau == 0] = 0
 
     hartrange = (wave > 210) & (wave < 310)
     srcrange = (wave > 122) & (wave < 175)
@@ -124,7 +124,7 @@ def gfactor(O2, T, z, zenithangle):
         for freqi in range(len(freq)):
             sigma[zi] += Sjlayer[freqi] * doppler(Adlayer[freqi], grid - freq[freqi])
 
-    pathl = pathleng(z, zenithangle) * 1e5  # [km -> cm]
+    pathl = pathleng(z, zenithangle) * 1e2  # [m -> cm]
     tau = np.matmul(np.multiply(sigma.T, O2), pathl.T)
     gA = np.sum((2.742e13 * sigma.T * np.exp(-tau)), axis=0) / len(freq)
 #    gA[tau[1] == 0] = 0
@@ -156,8 +156,8 @@ def ozone_mlynczak(ver_o2delta, T, m, o, o3, Jhart, Jlya, Jsrc, gA):
     co2 = 405e-6*m
     
     Q_o1d = q_o1d(T, n2, o2)
-    Q_o2delta = q_o2delta(T, o2, n2, o=0)
-    Q_o2sig = q_o2sig(n2, co2, o2, o=0, o3=0)
+    Q_o2delta = q_o2delta(T, o2, n2, o)
+    Q_o2sig = q_o2sig(n2, co2, o2, o, o3)
     
     A_o2sig = 0.0758
     A_o2delta = 2.58e-4
@@ -186,9 +186,58 @@ def ozone_mlynczak(ver_o2delta, T, m, o, o3, Jhart, Jlya, Jsrc, gA):
     o3 = (o2delta - o2delta_from_gA - o2delta_from_Jo2)/o2delta_from_Jo3_factor
     return o3
 
-
-
+def cal_o2delta(o3, T, m, z, zenithangle, gA):
+    from chemi import jfactors, oxygen_atom
+    o2 = 0.21 * m
+    n2 = 0.78 * m
+    co2 = 405e-6*m
     
+    #gA = gfactor(o2, T, z, zenithangle)
+    jhart, jsrc, jlya, j3, j2 = jfactors(np.zeros(z.shape), o2, o3, n2, z, zenithangle)
+    o = oxygen_atom(m, T, o3, j3)
+
+#    plt.semilogx(o,z, label='o')
+#    plt.semilogx(o3,z, label='o3')
+#    plt.legend()
+    
+    qy_hart = 0.9 #quatumn yield
+    qy_lya = 0.44
+    qy_src = 1 
+    eff_o1d_o2sig = 0.77 #efficiency 
+    
+    from chemi import q_o1d, q_o2sig, q_o2delta
+    Q_o1d = q_o1d(T, n2, o2)
+    Q_o2delta = q_o2delta(T, o2, n2, o)
+    Q_o2sig = q_o2sig(n2, co2, o2, o, o3)
+    
+    A_o2sig = 0.0758
+    A_o2delta = 2.58e-4
+    A_o1d = 0 #6.81e-3 #from donal's code? 
+    
+    prod_o1d_from_o2 = o2 * (qy_src * jsrc + qy_lya * jlya)
+    prod_o1d_from_o3 = qy_hart * o3 * jhart
+    prod_o1d = prod_o1d_from_o3 + prod_o1d_from_o2
+#    prod_o1d = prod_o1d_from_o2
+    prod_o1d = prod_o1d_from_o3
+    
+    loss_o1d = Q_o1d + A_o1d
+    o1d = prod_o1d / loss_o1d
+    
+    k_o1d_o2 = 3.2e-11*np.exp(70/T) #
+    prod_o2sig = eff_o1d_o2sig * k_o1d_o2 * o2 * o1d + gA * o2
+    loss_o2sig = Q_o2sig + A_o2sig
+    o2sig = prod_o2sig / loss_o2sig
+    
+    prod_o2delta_from_o3 = qy_hart * o3 * jhart
+    prod_o2delta_from_o2sig = Q_o2sig * o2sig
+    prod_o2delta = prod_o2delta_from_o3 + prod_o2delta_from_o2sig
+#    prod_o2delta = prod_o2delta_from_o2sig
+    loss_o2delta = Q_o2delta + A_o2delta
+    o2delta = prod_o2delta/loss_o2delta
+    
+    return o2delta
+
+
     
     
     

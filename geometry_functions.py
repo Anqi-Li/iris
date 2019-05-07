@@ -156,9 +156,9 @@ def los_points_fix_dl2(look, pos, nop=300, dl=6e3, d_start=1730e3):
         lx[i] = pos.sel(xyz='x') + (i+d_start/dl)*look.sel(xyz='x')*dl 
         ly[i] = pos.sel(xyz='y') + (i+d_start/dl)*look.sel(xyz='y')*dl
         lz[i] = pos.sel(xyz='z') + (i+d_start/dl)*look.sel(xyz='z')*dl
-    #lx = xr.DataArray(lx, coords=[np.arange(nop)], dims=('n',), attrs={'units':'meter'})
-    #ly = xr.DataArray(ly, coords=lx.coords, attrs=lx.attrs)
-    #lz = xr.DataArray(lz, coords=lx.coords, attrs=lx.attrs)
+    lx = xr.DataArray(lx, coords=np.arange(nop), dims=('n',), attrs={'units':'meter'})
+    ly = xr.DataArray(ly, coords=lx.coords, attrs=lx.attrs)
+    lz = xr.DataArray(lz, coords=lx.coords, attrs=lx.attrs)
     return lx, ly, lz
 
     

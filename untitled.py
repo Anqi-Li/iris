@@ -131,7 +131,7 @@ result = cur.execute(select_str)
 all_image = result.fetchall()
 db.close()
 orb_lst = np.unique(all_image)
-orb_from = 23967
+orb_from = 26168
 idx_from = (np.abs(orb_lst - orb_from)).argmin()
 for orbit in orb_lst[idx_from:]:
     extract_iris_db(orbit, 3, figure_dir)        
