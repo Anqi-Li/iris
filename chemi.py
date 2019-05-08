@@ -217,8 +217,6 @@ def cal_o2delta(o3, T, m, z, zenithangle, gA):
     prod_o1d_from_o2 = o2 * (qy_src * jsrc + qy_lya * jlya)
     prod_o1d_from_o3 = qy_hart * o3 * jhart
     prod_o1d = prod_o1d_from_o3 + prod_o1d_from_o2
-#    prod_o1d = prod_o1d_from_o2
-    prod_o1d = prod_o1d_from_o3
     
     loss_o1d = Q_o1d + A_o1d
     o1d = prod_o1d / loss_o1d
@@ -231,13 +229,49 @@ def cal_o2delta(o3, T, m, z, zenithangle, gA):
     prod_o2delta_from_o3 = qy_hart * o3 * jhart
     prod_o2delta_from_o2sig = Q_o2sig * o2sig
     prod_o2delta = prod_o2delta_from_o3 + prod_o2delta_from_o2sig
-#    prod_o2delta = prod_o2delta_from_o2sig
     loss_o2delta = Q_o2delta + A_o2delta
     o2delta = prod_o2delta/loss_o2delta
     
     return o2delta
 
-
+def cal_o2delta_thomas(o3, T, m, z, zenithangle, gA):
+    from chemi import jfactors, oxygen_atom
+    o2 = 0.21 * m
+    n2 = 0.78 * m
+    #co2 = 405e-6*m 
+    jhart, jsrc, jlya, j3, j2 = jfactors(np.zeros(z.shape), o2, o3, n2, z, zenithangle)
+    #o = oxygen_atom(m, T, o3, j3)
+    Q_o1d = 2e-11*np.exp(-107/T)*n2 + 2.9e-11*np.exp(-67/T)*o2
+    Q_o2delta = 2.22e-18 * ((T/300)**0.78) *o2
+    Q_o2sig = 2e-15*n2
+    
+    A_o1d = 0
+    A_o2sig = 0.085
+    A_o2delta = 2.58e-4
+    
+    qy_hart = 0.9 #quatumn yield
+    qy_lya = 0.44
+    qy_src = 1 
+    eff_o1d_o2sig = 0.77 #efficiency
+    
+    prod_o1d_from_o3 = qy_hart * o3 * jhart
+    prod_o1d = prod_o1d_from_o3 
+    
+    loss_o1d = Q_o1d + A_o1d
+    o1d = prod_o1d / loss_o1d
+    
+    k_o1d_o2 = 3.2e-11*np.exp(70/T) #
+    prod_o2sig = eff_o1d_o2sig * k_o1d_o2 * o2 * o1d + gA * o2
+    loss_o2sig = Q_o2sig + A_o2sig
+    o2sig = prod_o2sig / loss_o2sig
+    
+    prod_o2delta_from_o3 = qy_hart * o3 * jhart
+    prod_o2delta_from_o2sig = Q_o2sig * o2sig
+    prod_o2delta = prod_o2delta_from_o3 + prod_o2delta_from_o2sig
+    loss_o2delta = Q_o2delta + A_o2delta
+    o2delta = prod_o2delta/loss_o2delta
+    
+    return o2delta    
     
     
     

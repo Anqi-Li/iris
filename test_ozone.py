@@ -318,9 +318,9 @@ plt.legend()
 plt.show()
 
 #%% lsq fit
-from chemi import cal_o2delta
+from chemi import cal_o2delta, cal_o2delta_thomas
 def residual(o3, T, m, z, zenithangle, gA, o2delta_meas):
-    o2delta_model = cal_o2delta(o3, T, m, z, zenithangle, gA)    
+    o2delta_model = cal_o2delta_thomas(o3, T, m, z, zenithangle, gA)    
     return o2delta_meas - o2delta_model
 
 from scipy.optimize import least_squares
@@ -330,10 +330,25 @@ from scipy.optimize import least_squares
 #o3_init = interp1d(z_initial, o3_initial, fill_value='extrapolate')(z) # cm-3
 o3_init = O3_mlynczak
 o2delta_meas = result_1d.isel(mjd=5) / 2.58e-4 #cm-3
-res_lsq = least_squares(residual, o3_init, verbose=1, args=(T, m, z, zenithangle, gA, o2delta_meas))
+res_lsq = least_squares(residual, o3_init, bounds=(0, np.inf), verbose=1, 
+                        args=(T, m, z, zenithangle, gA, o2delta_meas))
+o3_thomas = res_lsq.x
 
-if res_lsq.success:
-    o3 = res_lsq.x
-    plt.figure()
-    plt.plot(o3, z*1e-3)
-#    plt.semilogx(o3,z)
+
+def residual(o3, T, m, z, zenithangle, gA, o2delta_meas):
+    o2delta_model = cal_o2delta(o3, T, m, z, zenithangle, gA)    
+    return o2delta_meas - o2delta_model
+
+from scipy.optimize import least_squares
+o3_init = O3_mlynczak
+o2delta_meas = result_1d.isel(mjd=5) / 2.58e-4 #cm-3
+res_lsq = least_squares(residual, o3_init, bounds=(0, np.inf), verbose=1, 
+                        args=(T, m, z, zenithangle, gA, o2delta_meas))
+o3_mlynczak = res_lsq.x
+
+plt.figure()
+plt.semilogx(o3_thomas,z, o3_mlynczak, z)
+plt.xlim([1e7, 1e11])
+plt.figure()
+plt.semilogx(O3_thomas,z, O3_mlynczak,z)
+plt.xlim([1e7, 1e11])
