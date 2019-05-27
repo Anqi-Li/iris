@@ -10,14 +10,14 @@ from osirisl1services.readlevel1 import open_level1_ir
 from osirisl1services.services import Level1Services
 
 orbit = 6432
-scan = 14
-scanno = int(str(orbit) + ('%03d' % scan))
+#scan = 14
+#scanno = int(str(orbit) + ('%03d' % scan))
 
 channel = 1
 ncfilename = 'test'+'.nc'
 
 
-ir = open_level1_ir(scanno=scanno, channel=channel)
+ir = open_level1_ir(orbit=orbit, channel=channel)
 #ir.mjd.attrs['units'] = 'days since 1858-11-17 00:00:00.0'
 
 

@@ -211,7 +211,7 @@ def cal_o2delta(o3, T, m, z, zenithangle, gA):
     Q_o2sig = q_o2sig(n2, co2, o2, o, o3)
     
     A_o2sig = 0.0758
-    A_o2delta = 2.58e-4
+    A_o2delta = 2.23e-4 # 2.58e-4
     A_o1d = 0 #6.81e-3 #from donal's code? 
     
     prod_o1d_from_o2 = o2 * (qy_src * jsrc + qy_lya * jlya)
@@ -221,8 +221,12 @@ def cal_o2delta(o3, T, m, z, zenithangle, gA):
     loss_o1d = Q_o1d + A_o1d
     o1d = prod_o1d / loss_o1d
     
+    k_o_o = 4.7e-33*(300/T)
+    c_o2 = 6.6 #empirical quenchin coefficient
+    c_o = 19 #empirical quenchin coefficient
     k_o1d_o2 = 3.2e-11*np.exp(70/T) #
-    prod_o2sig = eff_o1d_o2sig * k_o1d_o2 * o2 * o1d + gA * o2
+    prod_o2sig_barth = k_o_o * o**2 * m * o2 / (c_o2*o2 + c_o*o)
+    prod_o2sig = eff_o1d_o2sig * k_o1d_o2 * o2 * o1d + gA * o2 + prod_o2sig_barth
     loss_o2sig = Q_o2sig + A_o2sig
     o2sig = prod_o2sig / loss_o2sig
     
