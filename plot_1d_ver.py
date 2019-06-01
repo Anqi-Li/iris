@@ -24,32 +24,38 @@ tan_lat = ir.l1.latitude.sel(pixel=slice(14, 128))
 #tan_lon = ir.l1.longitude.sel(pixel=slice(14, 128))
 
 #%% load ver1d data
-#nc_filename = '{}.nc'.format(orbit)
-#ver = xr.open_dataset(nc_filename).ver
-#plt.rcParams.update({'font.size': 15})
-#for im in range(50,1452):
-#    print(im, '/', 1452)
-#    fig, ax = plt.subplots(ncols=1, nrows=2, sharey=True, figsize=(15,10))
-#    ax[0].pcolormesh(ver.T, norm=LogNorm(), vmin=1e5, vmax=1e7, cmap='Spectral')
-#    #plt.colorbar()
-#    ax[0].set(xlabel='Latitude / degree N',
-#              ylabel='Altitude / km')
-#    
-#    ax[0].set_xticklabels(np.round(tan_lat.isel(mjd=ax[0].get_xticks().astype(int),pixel=60).data))
-#    ax[0].set_yticklabels([0,60,70,80,90,100,110])
-#    ax[0].axvline(x=im, color='r', linewidth=2)
-#    
-#    ax[1].plot(ver[im], np.arange(len(ver.z)), 'o', ms=8)
-#    ax[1].set_xscale('log')
-#    ax[1].set(xlim=[1e5, 3e7],
-#              ylabel='Altitude / km',
-#              xlabel='Volumn emission rate / photons cm-3 s-1')
-#    
-#    path = '/home/anqil/Documents/osiris_database/plots_for_presentations/Limb_workshop2019/VER/{}/'.format(orbit)
-#    filename = '1D_VER_{}_{}.png'.format(orbit, im)
-#    plt.savefig(path+filename, bbox_inches='tight')
-#    plt.close(fig)
-#    
+nc_filename = '{}_propermodel_pi.nc'.format(orbit)
+ver = xr.open_dataset(nc_filename).ver
+z = xr.open_dataset(nc_filename).z
+day_mjd_lst = xr.open_dataset(nc_filename).mjd 
+o3_iris = xr.open_dataset(nc_filename).o3_iris
+mr = xr.open_dataset(nc_filename).mr
+mr_threshold = 0.9
+
+plt.rcParams.update({'font.size': 15})
+for im in range(len(day_mjd_lst)):
+    print('VER ', im, '/', 1452)
+    fig, ax = plt.subplots(ncols=1, nrows=2, sharey=True, figsize=(15,10))
+    ax[0].pcolormesh(ver.T, norm=LogNorm(), vmin=1e5, vmax=1e7, cmap='Spectral')
+    #plt.colorbar()
+    ax[0].set(xlabel='Latitude / degree N',
+              ylabel='Altitude / km')
+    
+    ax[0].set_xticklabels(np.round(tan_lat.isel(mjd=ax[0].get_xticks().astype(int),pixel=60).data))
+    ax[0].set_yticklabels([0,60,70,80,90,100,110])
+    ax[0].axvline(x=im, color='r', linewidth=2)
+    
+    ax[1].plot(ver[im], np.arange(len(ver.z)), 'o', ms=8)
+    ax[1].set_xscale('log')
+    ax[1].set(xlim=[1e5, 3e7],
+              ylabel='Altitude / km',
+              xlabel='Volumn emission rate / photons cm-3 s-1')
+    
+    path = '/home/anqil/Documents/osiris_database/plots_for_presentations/Limb_workshop2019/VER/{}/'.format(orbit)
+    filename = '1D_VER_pi_{}_{}.png'.format(orbit, im)
+    plt.savefig(path+filename, bbox_inches='tight')
+    plt.close(fig)
+    
 
 #%% load smr whole orbit
 import requests 
@@ -117,17 +123,13 @@ o3_smr_a = m * o3_vmr_a # cm-3
 error_smr = m * error_vmr #cm-3
 
 #%%
-nc_filename = '{}_pi.nc'.format(orbit)
-z = xr.open_dataset(nc_filename).z
-day_mjd_lst = xr.open_dataset(nc_filename).mjd 
-o3_iris = xr.open_dataset(nc_filename).o3_iris
-mr = xr.open_dataset(nc_filename).mr
-mr_threshold = 0.9
+#nc_filename = '{}_pi.nc'.format(orbit)
+
 
 grid = plt.GridSpec(ncols=2 ,nrows=3, hspace=0.5, wspace=0.2)
 plt.rcParams.update({'font.size': 14})
 for i in range(len(day_mjd_lst)):
-    print(i, 'out of', len(day_mjd_lst))
+    print('ozone ', i, 'out of', len(day_mjd_lst))
     closest_smr_scan_idx = (np.abs(mjd_smr - day_mjd_lst[i].data)).argmin()
     
     fig = plt.figure(figsize=(15,10))
@@ -136,7 +138,8 @@ for i in range(len(day_mjd_lst)):
     ax2 = fig.add_subplot(grid[2,0])
     ax3 = fig.add_subplot(grid[2,1],  sharey=ax2)
 
-    ax0.pcolor(np.tile(mjd_smr,(len(z_smr.T),1)), z_smr.T*1e-3, o3_smr.T, 
+    ax0.pcolormesh(np.tile(mjd_smr,(len(z_smr.T),1)), z_smr.T*1e-3, 
+                   np.ma.masked_where(mr_smr.T<0.9,o3_smr.T), 
                norm=LogNorm(vmin=1e6, vmax=1e10), cmap='inferno')
     ax0.axvline(x=mjd_smr[closest_smr_scan_idx], color='r')
 #    CS = ax0.contour(mjd_smr, z_smr[0,:]*1e-3, mr_smr.T, levels=[0.8, 1.2])
@@ -146,7 +149,7 @@ for i in range(len(day_mjd_lst)):
               ylabel='Altitude / km')
     ax0.set_xticklabels(np.round(tan_lat.isel(mjd=[0,366,800,1235,1669,2104,2539,2896],pixel=60).data))
     
-    im = ax1.pcolor(day_mjd_lst[:-2], z*1e-3, o3_iris[:-2].T,
+    im = ax1.pcolormesh(day_mjd_lst[:-2], z*1e-3, np.ma.masked_where(mr[:-2].T<0.9,o3_iris[:-2].T),
                     norm=LogNorm(vmin=1e6, vmax=1e10), cmap='inferno')
     ax1.axvline(x=day_mjd_lst[i], color='r')
     ax1.set(title='IRIS',
@@ -181,7 +184,7 @@ for i in range(len(day_mjd_lst)):
 #    ax3.legend(loc='lower left')
     
     
-    path = '/home/anqil/Documents/osiris_database/plots_for_presentations/Limb_workshop2019/Ozone/'
+    path = '/home/anqil/Documents/osiris_database/plots_for_presentations/Limb_workshop2019/Ozone/{}/'.format(orbit)
     filename = 'ozone_pi_{}_{}.png'.format(orbit, i)
     plt.savefig(path+filename)
     plt.close(fig)

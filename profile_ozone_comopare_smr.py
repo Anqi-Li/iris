@@ -58,10 +58,10 @@ bot = 60e3
 l1 = l1.where(tan_alt<top).where(tan_alt>bot)
 
 # retireval grid
-#z = np.arange(bot, top, 1e3) # m
-z = np.concatenate((np.arange(bot, 90e3, 1e3), 
-                    np.arange(90e3, 100e3, 3e3), 
-                    np.arange(100e3, top, 5e3)))
+z = np.arange(bot, top, 1e3) # m
+#z = np.concatenate((np.arange(bot, 90e3, 1e3), 
+#                    np.arange(90e3, 100e3, 3e3), 
+#                    np.arange(100e3, top, 5e3)))
 z_top = z[-1] + 2e3
 
 #im_lst = np.arange(300,350,5)
@@ -202,19 +202,19 @@ zenithangle = 90 - sun.transform_to(altaz).alt.deg
 gA = gfactor(0.21*m_SMR, T_SMR, z, zenithangle)
 xa = cal_o2delta(o3_SMR_a, T_SMR, m_SMR, z, zenithangle, gA) * A_delta
 #xa = np.ones(len(z)) *0 # temp
-Sa = np.diag(np.ones(len(z))) *1e-9 #temp
-#Sa = np.diag(np.ones(len(z)))* np.mean(xa)**2 #temp
+#Sa = np.diag(np.ones(len(z))) *1e-9 #temp
+Sa = np.diag(xa**2) #temp
 
 #Sa = np.diag(xa**2) #temp
 resi = []
-result_1d = np.zeros((len(im_lst[0:2]), len(z)))
+result_1d = np.zeros((len(im_lst), len(z)))
 mr = np.zeros(result_1d.shape)
-for i in range(len(im_lst[0:2])):
+for i in range(len(im_lst)):
     h = tan_alt.isel(mjd=im_lst[i]).sel(pixel=pixel[l1.notnull().isel(mjd=im_lst[i])])
     K = pathl1d_iris(h, z, z_top)    
     y = l1.isel(mjd=im_lst[i]).sel(pixel=pixel[l1.notnull().isel(mjd=im_lst[i])]).data
-    Se = np.diag(np.ones(len(y))) * 30
-#    Se = np.diag(np.ones(len(y))) *1e21
+#    Se = np.diag(np.ones(len(y))) * 30
+    Se = np.diag(np.ones(len(y))) *(1e11)**2
 #    Se = np.diag(error.data[i,:]**2)
     x, A, Ss, Sm = linear_oem(K, Se, Sa, y, xa)
     result_1d[i,:] = x
@@ -223,7 +223,7 @@ for i in range(len(im_lst[0:2])):
 
 
 result_1d = xr.DataArray(result_1d, 
-                         coords=(mjd[im_lst[0:2]], z), 
+                         coords=(mjd[im_lst], z), 
                          dims=('mjd', 'z'))
 result_1d.attrs['units'] = 'photons cm-3 s-1 ?'
 result_1d.attrs['long_name'] = '1d inversion VER'
@@ -233,15 +233,18 @@ result_1d_mean = result_1d.where(mr>mr_threshold).mean(dim='mjd')
 #%%
 #==== plot residual
 plt.figure()
-plt.plot(np.array(resi).ravel())
+plt.plot(np.array(resi).ravel()[100:300])
 plt.ylabel('y-Kx')
 
 #==== plot VER contour
 #result_1d = abs(result_1d)
-result_1d.plot(x='mjd', y='z', 
-               norm=LogNorm(), 
-               vmin=1e4, vmax=8e6, 
-               size=3, aspect=3)
+#result_1d.plot(x='mjd', y='z', 
+#               norm=LogNorm(), 
+#               vmin=1e4, vmax=8e6, 
+#               size=3, aspect=3)
+plt.figure(figsize=(9,3))
+plt.pcolormesh(result_1d.mjd, result_1d.z, np.ma.masked_where(mr.T<mr_threshold, result_1d.T),
+               norm=LogNorm(), vmin=1e4, vmax=8e6)
 ax = plt.gca()
 ax.set(title='IRIS 1d retrieved VER',
       xlabel='mjd')
