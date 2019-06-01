@@ -348,6 +348,8 @@ mr_tomo = xr.DataArray(mr_tomo, coords=result_tomo.coords, dims=result_tomo.dims
 
 #%% Plot tomo result
 #====check residual
+plt.rcParams.update({'font.size': 15})
+
 zoom = np.arange(100,150)
 plt.figure()
 plt.plot((K_coo.dot(x_hat)-y)[zoom])
@@ -359,7 +361,7 @@ plt.show()
 plt.figure(figsize=(10,5))
 ax = plt.gca()
 result_tomo_masked = np.ma.masked_where(mr_tomo.isel(alpha=1)<0.8, result_tomo.isel(alpha=1))
-main = ax.pcolor(grid_beta*Re, grid_rho, 
+main = ax.pcolor(grid_beta*Re, grid_rho*1e-3, 
 #                 result_tomo_masked.T,
                  result_tomo.isel(alpha=1).T, 
                  norm=LogNorm(vmin=1e5, vmax=1e7), cmap='Spectral') 
@@ -371,7 +373,7 @@ plt.colorbar(main)
 for i in range(0,len(im_lst),1):
     plt.axvline(x=tan_beta.sel(pixel=60)[i].data*Re, ymin=0.9, color='k')
 
-CS = plt.contour(grid_beta*Re, grid_rho, mr_tomo.isel(alpha=1).T,
+CS = plt.contour(grid_beta*Re, grid_rho*1e-3, mr_tomo.isel(alpha=1).T,
            levels=[0.8, 1, 1.5], colors=('w',), linestyles=('-',),linewidths=(2,))
 plt.clabel(CS, inline=1, fontsize=10)
 #ax.set(xlim=[(tan_beta.sel(pixel=60)*Re).min(), (tan_beta.sel(pixel=60)*Re).max()])
@@ -379,6 +381,7 @@ ax1 = ax.twiny()
 ax1.set_xlim(ax.get_xlim())
 ax1.set_xticklabels(np.round(ax.get_xticks()/Re,2))
 ax1.set_xlabel('Angle along track / degrees')
+plt.savefig('tomo_test_{}.png'.format(orbit), bbox_inches='tight')
 
 
 #==== vertical profiles within the 3D matrix
