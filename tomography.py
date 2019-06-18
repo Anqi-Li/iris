@@ -28,8 +28,8 @@ A_o2delta = 2.23e-4#2.58e-4#2.23e-4 # radiative lifetime of singlet delta to gro
 #orbit = 6434
 #orbit = 22873
 channel = 3
-orbit = 20900
-#orbit = 22015
+#orbit = 20900
+orbit = 22015
 #orbit = 22643
 
 ir = open_level1_ir(orbit, channel, valid=False)
@@ -60,13 +60,9 @@ from geometry_functions import lla2ecef
 import pandas as pd
 tan_x, tan_y, tan_z = lla2ecef(tan_lat, tan_lon, tan_alt)
 tan_xyz = xr.concat([tan_x, tan_y, tan_z],
-                    pd.Index(['x', 'y', 'z'], name='xyz')).transpose('mjd', 'pixel', 'xyz')
+                    pd.Index(['x', 'y', 'z'], name='xyz'))#.transpose('mjd', 'pixel', 'xyz')
 
-norm = np.sqrt((tan_x-sc_pos.sel(xyz='x'))**2 +
-                (tan_y-sc_pos.sel(xyz='y'))**2 +
-                (tan_z-sc_pos.sel(xyz='z'))**2)
-
-look = (tan_xyz - sc_pos)/norm
+look = (tan_xyz - sc_pos)/np.linalg.norm(tan_xyz-sc_pos, axis=0)
 
 sc_look = look
 
@@ -141,8 +137,8 @@ z_top = z[-1] + 2e3
 
 day_mjd_lst = mjd[sza<90]
 #im_lst = np.arange(1150,1250,1)
-im_lst = np.arange(2350,2450,1)
-#im_lst = np.arange(800,900,1)
+#im_lst = np.arange(2350,2450,1)
+im_lst = np.arange(800,900,1)
 pix_lst = np.arange(len(pixel))
 
 #%% interpolation 
@@ -158,8 +154,8 @@ data_interp = xr.DataArray(data_interp, coords=[l1.mjd, alts_interp],
 
 #%%plotting
 plt.figure(figsize=(15,6))
-data_interp.plot(x='mjd', y='altitude', cmap='Spectral',
-                 norm=LogNorm(), vmin=1e9, vmax=1e13)
+data_interp.plot(x='mjd', y='altitude', cmap='viridis',
+                 norm=LogNorm(), vmin=1e11, vmax=1e13)
 plt.title(str(num2date(ir.mjd[0],units))+' channel '+str(channel))
 plt.axvline(x=mjd[im_lst[0]], color='k', linewidth=5)
 plt.axvline(x=mjd[im_lst[-1]], color='k', linewidth=5)
@@ -171,9 +167,9 @@ plt.show()
 
 
 plt.figure(figsize=(15,6))
-data_interp.isel(mjd=im_lst).plot(x='mjd', y='altitude',  cmap='Spectral',
+data_interp.isel(mjd=im_lst).plot(x='mjd', y='altitude',  cmap='viridis',
                  norm=LogNorm(), 
-                 vmin=1e9, vmax=1e13)#, 
+                 vmin=1e11, vmax=1e13)#, 
                  #size=5, aspect=3)
 ax = plt.gca()
 ax.set(title='zoom in im_lst',
@@ -197,47 +193,64 @@ plt.show()
 #%% Tomography
 #%% change coordinate
 #====define the new base vectors
-n_crosstrack = np.cross(sc_look.isel(mjd=im_lst[0], pixel=60),
-                        sc_pos.isel(mjd=im_lst[0]))
-n_vel = np.cross(sc_pos.isel(mjd=im_lst[0]), n_crosstrack)
-n_zenith = sc_pos.isel(mjd=im_lst[0])
+#n_crosstrack = np.cross(sc_look.isel(mjd=im_lst[0], pixel=60),
+#                        sc_pos.isel(mjd=im_lst[0]))
+#n_vel = np.cross(sc_pos.isel(mjd=im_lst[0]), n_crosstrack)
+#n_zenith = sc_pos.isel(mjd=im_lst[0])
+
+n_zenith = sc_pos.isel(mjd=0)
+n_crosstrack = np.cross(sc_look.isel(mjd=0, pixel=60), n_zenith)
+n_vel = np.cross(n_zenith, n_crosstrack)
+n_z = n_zenith/np.linalg.norm(n_zenith)
+n_x = n_crosstrack/np.linalg.norm(n_crosstrack)
+n_y = n_vel/np.linalg.norm(n_vel)
 
 #====tangent points in alpha, beta, rho coordinate
-import pandas as pd
-from geometry_functions import lla2ecef, cart2sphe, change_of_basis
-tan_ecef = xr.concat(lla2ecef(tan_lat,tan_lon,tan_alt), 
-                     pd.Index(['x','y','z'], name='xyz'))
-
+from geometry_functions import cart2sphe, change_of_basis
+from geometry_functions import ecef2lla
 tan_alpha = []
 tan_beta = []
 tan_rho = []
-for i in im_lst:
-    p_old = tan_ecef.isel(mjd=i, pixel=pix_lst)
-    p_new = change_of_basis(n_crosstrack, n_vel, n_zenith, p_old)
+
+for i in mjd[im_lst]:
+    p_old = tan_xyz.sel(mjd=i)
+#    p_new = change_of_basis(n_crosstrack, n_vel, n_zenith, p_old)
+    p_new = change_of_basis(n_x, n_y, n_z, p_old)
     alpha, beta, rho = cart2sphe(p_new.sel(xyz='x'),
                                  p_new.sel(xyz='y'),
-                                 p_new.sel(xyz='z'))
+                                 p_new.sel(xyz='z')) 
     tan_alpha.append(alpha)
     tan_beta.append(beta)
     tan_rho.append(rho)
 tan_alpha = xr.DataArray(tan_alpha, 
-                         coords=[mjd[im_lst], pixel[pix_lst]],
+                         coords=[mjd[im_lst], pixel],
                          dims=['mjd', 'pixel'])
 tan_beta = xr.DataArray(tan_beta, 
-                        coords=[mjd[im_lst], pixel[pix_lst]],
+                        coords=[mjd[im_lst], pixel],
                         dims=['mjd', 'pixel'])
 tan_rho = xr.DataArray(tan_rho, 
-                       coords=[mjd[im_lst], pixel[pix_lst]],
+                       coords=[mjd[im_lst], pixel],
                        dims=['mjd', 'pixel'])
 
-Re = 6371 + 80 #Earth radius in km
+
+#%% plot tangent points in alpha-beta-rho space
+plt.figure()
+plt.plot(im_lst, tan_alpha.isel(pixel=60)*180/np.pi,label='cross')
+plt.plot(im_lst, tan_beta.isel(pixel=60)*180/np.pi, label='along')
+
+plt.plot(tan_lat.isel(pixel=60), '--', label='lat')
+plt.plot(tan_lon.isel(pixel=60), '--', label='lon')
+plt.legend()
+
+
+
 
 #%% Tomo grid
 #====define atmosphere grid (the bin edges)
 edges_alpha = np.linspace(tan_alpha.min()-0.01,
                           tan_alpha.max()+0.01, 2) #radian
 edges_beta = np.arange(tan_beta.min()-0.1,
-                         tan_beta.max()+0.15, 0.02) #radian
+                         tan_beta.max()+0.15, 0.02) #radian (0.2 degree in Degenstein 2004)
 edges_rho = np.append(z,z_top) # meter
 edges = edges_alpha, edges_beta, edges_rho
 
@@ -305,7 +318,7 @@ from oem_functions import linear_oem_sp
 import scipy.sparse as sp
 from chemi import cal_o2delta
 
-y = l1.isel(mjd=im_lst).stack(msure=('mjd','pixel')).dropna('msure').data 
+y = l1.isel(mjd=im_lst).stack(msure=('mjd','pixel')).dropna('msure').data  /np.pi
 #y = abs(y)
 
 gA_table = np.load('gA_table.npz')['gA']
@@ -314,12 +327,12 @@ sza_table = np.load('gA_table.npz')['sza']
 month_table = np.load('gA_table.npz')['month']
 
 closest_scan_idx = (np.abs(mjd_smr - mjd[im_lst[0]])).argmin()
-o3_SMR_a = interp1d(z_smr[closest_scan_idx,:], o3_smr_a[closest_scan_idx,:],
-                   fill_value="extrapolate")(grid_rho)
+o3_SMR_a = np.e**(interp1d(z_smr[closest_scan_idx,:], np.log(o3_smr_a[closest_scan_idx,:]),
+                   fill_value="extrapolate")(grid_rho))
 T_SMR = interp1d(z_smr[closest_scan_idx,:], T_smr[closest_scan_idx,:],
                  fill_value="extrapolate")(grid_rho)
-m_SMR = interp1d(z_smr[closest_scan_idx,:], m[closest_scan_idx,:],
-                 fill_value="extrapolate")(grid_rho)
+m_SMR = np.e**(interp1d(z_smr[closest_scan_idx,:], np.log(m[closest_scan_idx,:]),
+                 fill_value="extrapolate")(grid_rho))
 #        gA = gfactor(0.21*m_SMR, T_SMR, z, sza.sel(mjd=day_mjd_lst[i]).item())
 gA = interp1d(z_table, 
               gA_table[:,(np.abs(month_table - start_month)).argmin(), 0,
@@ -327,8 +340,8 @@ gA = interp1d(z_table,
 xa_1d = cal_o2delta(o3_SMR_a, T_SMR, m_SMR, grid_rho, sza.sel(mjd=mjd[im_lst[0]]).item(), gA) * A_o2delta
 xa_1d = abs(xa_1d)
 xa = np.tile(xa_1d, (len(grid_alpha),len(grid_beta),1)).ravel()
-Sa = sp.diags((xa)**2, shape=(col_len, col_len))  #temp
-Se = sp.diags([1], shape=(measurement_id, measurement_id))* (1e12)**2 #(5e12)**2 #temp
+Sa = sp.diags((xa*0.3)**2, shape=(col_len, col_len))  #temp
+Se = sp.diags([1], shape=(measurement_id, measurement_id))* (1e11)**2 #(5e12)**2 #temp
 x_hat, G = linear_oem_sp(K_coo, Se, Sa, y, xa)
 
 
@@ -350,31 +363,35 @@ mr_tomo = xr.DataArray(mr_tomo, coords=result_tomo.coords, dims=result_tomo.dims
 #====check residual
 plt.rcParams.update({'font.size': 15})
 
-zoom = np.arange(100,150)
+zoom = np.arange(100,500)
 plt.figure()
 plt.plot((K_coo.dot(x_hat)-y)[zoom])
 plt.ylabel('residual')
 plt.show()
+plt.figure()
+plt.hist(((y-K_coo.dot(x_hat))/y)*100, range=(-100,100), bins=100)
 
 
 #====contour plot 
+Re = 6371 + 80 #Earth radius in km
 plt.figure(figsize=(10,5))
 ax = plt.gca()
 result_tomo_masked = np.ma.masked_where(mr_tomo.isel(alpha=1)<0.8, result_tomo.isel(alpha=1))
-main = ax.pcolor(grid_beta*Re, grid_rho*1e-3, 
+main = ax.pcolormesh(grid_beta*Re, grid_rho*1e-3, 
 #                 result_tomo_masked.T,
                  result_tomo.isel(alpha=1).T, 
-                 norm=LogNorm(vmin=1e5, vmax=1e7), cmap='Spectral') 
-#                 size=3, aspect=3)
+                 norm=LogNorm(vmin=1e5, vmax=1e7), cmap='Spectral_r')
 ax.set(xlabel='Distance along track / km',
        ylabel='Altitude / km')
 #       title='slice along track')
 plt.colorbar(main)
-for i in range(0,len(im_lst),1):
-    plt.axvline(x=tan_beta.sel(pixel=60)[i].data*Re, ymin=0.9, color='k')
+#for i in range(0,len(im_lst),1):
+#    plt.axvline(x=tan_beta.sel(pixel=60)[i].data*Re, ymin=0.9, color='k')
 
+plt.scatter(tan_beta.where(tan_rho>bot).where(tan_rho<top)*Re, 
+            tan_rho.where(tan_rho>bot).where(tan_rho<top)*1e-3, s=.2, c='k')
 CS = plt.contour(grid_beta*Re, grid_rho*1e-3, mr_tomo.isel(alpha=1).T,
-           levels=[0.8, 1, 1.5], colors=('w',), linestyles=('-',),linewidths=(2,))
+           levels=[0.8, 1, 1.5], colors=('k',), linestyles=('-',),linewidths=(2,))
 plt.clabel(CS, inline=1, fontsize=10)
 #ax.set(xlim=[(tan_beta.sel(pixel=60)*Re).min(), (tan_beta.sel(pixel=60)*Re).max()])
 ax1 = ax.twiny()
@@ -393,8 +410,8 @@ ax.set(xlabel='VER',
       title='tomography VER (all columns along track)')
 for i in range(1,len(grid_alpha)-1):
     for j in range(1, len(grid_beta)-1):
-        ax.semilogx(result_tomo[i,j,:], grid_rho*1e-3, '-')
-ax.semilogx(xa_1d, grid_rho*1e-3, 'k-', label='a priori')
+        ax.semilogx(result_tomo[i,j,:], grid_rho*1e-3, '*')
+ax.semilogx(xa_1d, grid_rho*1e-3, 'k--', label='a priori')
 plt.legend()
 plt.show()
 

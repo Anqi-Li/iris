@@ -51,6 +51,12 @@ sun = coord.get_sun(now)
 sza = 90 - sun.transform_to(altaz).alt.deg
 sza = xr.DataArray(sza, coords=(mjd,), dims=('mjd',), name='sza')
 
+
+h_fov=2e3 #m
+v_fov=-tan_alt.diff(dim='pixel').mean()
+distance_sq = ((np.linalg.norm(sc_pos, axis=1)).mean()**2 - (6371e3+80e3)**2)
+solid_angle = h_fov*v_fov/distance_sq
+
 #%% clip data
 #====drop data below and above some altitudes
 top = 110e3
@@ -294,58 +300,87 @@ res_lsq = least_squares(residual, o3_init, bounds=(-np.inf, np.inf), verbose=1,
                         args=(T_SMR, m_SMR, z, zenithangle, gA, o2delta_meas))
 o3_iris = res_lsq.x
 
+
+#%%
+
+path = '/home/anqil/Downloads/'
+filename = 'ESACCI-OZONE-L2-LP-OSIRIS_ODIN-SASK_V5_10_HARMOZ_ALT-200504-fv0002.nc'
+data_os = xr.open_dataset(path+filename)
+o3_os = data_os.ozone_concentration * Av*1e-6 #molec cm-3
+error_os = data_os.ozone_concentration_standard_error * Av*1e-6 # molec cm-3
+m_os = data_os.pressure/data_os.temperature/8.314e4*Av #air mass density cm-3
+vmr_os = o3_os / m_os
+os_closest_scanno = abs(data_os.time - np.datetime64(Time(mjd[im_lst[im]], format='mjd').iso)).argmin()
+
 #%% compare
 #ozone
-f = 1 #temp iris offset factor 
-plt.figure()
-plt.plot(o3_iris[mr[im,:]>mr_threshold]/f, z[mr[im,:]>mr_threshold], '.',
+
+plt.figure() #number density comparison
+plt.errorbar(o3_os.isel(time=os_closest_scanno), data_os.altitude*1e3, 
+         xerr=error_os.isel(time=os_closest_scanno), 
+         color='green', ecolor='blue', linewidth=3, label='OS')
+plt.plot(o3_iris[mr[im,:]>mr_threshold], z[mr[im,:]>mr_threshold], '.',
          label='IRIS (mr>{})'.format(mr_threshold))
 plt.errorbar(o3_smr[AVK_smr.sum(axis=1)>mr_threshold], z_smr[AVK_smr.sum(axis=1)>mr_threshold], #'*-',
                     xerr=error_smr[AVK_smr.sum(axis=1)>mr_threshold], 
                     color='r', ecolor='orange', label='SMR (mr>{})'.format(mr_threshold))
 plt.plot(o3_smr_a, z_smr, color='k', ls='--', label='SMR apriori')
+
 plt.legend()
 ax = plt.gca()
 ax.set_xscale('log')
 ax.set(xlabel='ozone/ cm-3',
        ylabel='altitude/ m',
        title='compare SMR and IRIS ozone retrieval')
-plt.xlim([o3_smr_a.min(), o3_smr_a.max()])
-#plt.ylim([z_smr.min(), z_smr.max()])
-#ax.set(xlim=(o3_smr.min()/f, o3_iris.max()/f),
-#       ylim=(z.min(), z.max()))
+plt.xlim(left=o3_smr_a.min())
 plt.show()
 
-plt.figure()
-plt.plot(o3_iris[mr[im,:]>mr_threshold]/f/m_SMR[mr[im,:]>mr_threshold], 
+plt.figure() #VMR comparison
+plt.errorbar(1e6*vmr_os.isel(time=os_closest_scanno), data_os.altitude*1e3, 
+             xerr=1e6*(error_os/m_os).isel(time=os_closest_scanno), 
+             color='g', ecolor='b', linewidth=3, label='OS')
+plt.plot(1e6*o3_iris[mr[im,:]>mr_threshold]/m_SMR[mr[im,:]>mr_threshold], 
          z[mr[im,:]>mr_threshold], '.', label='IRIS (mr>{})'.format(mr_threshold))
-plt.errorbar(o3_vmr[AVK_smr.sum(axis=1)>mr_threshold], z_smr[AVK_smr.sum(axis=1)>mr_threshold], 
-                xerr=error_vmr[AVK_smr.sum(axis=1)>mr_threshold], 
+plt.errorbar(1e6*o3_vmr[AVK_smr.sum(axis=1)>mr_threshold], z_smr[AVK_smr.sum(axis=1)>mr_threshold], 
+                xerr=1e6*error_vmr[AVK_smr.sum(axis=1)>mr_threshold], 
                 color='r', ecolor='orange', label='SMR (mr>{})'.format(mr_threshold))
-plt.plot(o3_vmr_a, z_smr, ls='--', color='k', label='SMR apriori')
+plt.plot(1e6*o3_vmr_a, z_smr, ls='--', color='k', label='SMR apriori')
+
 plt.legend()
 ax = plt.gca()
 ax.set_xscale('linear')
-ax.set(xlabel='ozone VMR',
+ax.set(xlabel='ozone VMR (ppmv)',
        ylabel='altitude/ m',
 #       xlim=((o3_iris/m_SMR).min(),(o3_iris/m_SMR).max()),
 #       ylim=(z.min(), z.max()),
        title='compare SMR and IRIS ozone retrieval')
 plt.show()
 
-#pointing
+#%pointing
 
 plt.figure()
-plt.plot(tan_lon.isel(mjd=im_lst[im]), tan_lat.isel(mjd=im_lst[im]), '*', label='iris')
-plt.plot(result['Longitude'], result['Latitude'], '*', label='smr')
+#plt.plot([geo_os.ScanStartLongitude.isel(t=os_closest_scanno),
+#          geo_os.Longitude.isel(t=os_closest_scanno),
+#          geo_os.ScanEndLongitude.isel(t=os_closest_scanno)],
+#         [geo_os.ScanStartLatitude.isel(t=os_closest_scanno),
+#          geo_os.Latitude.isel(t=os_closest_scanno),
+#          geo_os.ScanEndLatitude.isel(t=os_closest_scanno)], '*--', color='g', label='os')
+plt.plot(data_os.longitude.isel(time=os_closest_scanno), 
+         data_os.latitude.isel(time=os_closest_scanno), 'g*')
+plt.plot(tan_lon.isel(mjd=im_lst[im]), tan_lat.isel(mjd=im_lst[im]), '*', color='C0', label='iris')
+plt.plot(result['Longitude'], result['Latitude'], '*', color='r', label='smr')
+
+
+
 plt.legend()
 plt.xlabel('lon')
 plt.ylabel('lat')
-plt.title('check colocation')
+plt.title('check location')
 plt.show()
 
 print('iris data taken in', num2date(mjd[im_lst[im]], units))
 print('smr data taken in', num2date(result['MJD'], units))
+print('os data taken in', data_os.time[os_closest_scanno].data)
 
 #plt.figure()
 #plt.subplot(121)

@@ -339,7 +339,12 @@ def cart2sphe(e1, e2, e3):
     #alpha: across-track angle, 
     #beta: along-track angle, 
     #rho: distance from origin)
+
     alpha = np.arctan(e1/e3)
-    beta = np.arctan(e2/e3)
+#    beta = np.arctan(e2/e3)
+#    alpha = np.arctan2(e1, e3)
+#    alpha = alpha * (alpha <= 0) + (alpha - 2 * np.pi) * (alpha > 0)
+    beta = np.arctan2(e2, e3)
+    beta = beta * (beta >= 0) + (beta + 2 * np.pi) * (beta < 0) # make beta in range of [0, 2pi]
     rho = np.sqrt(e1**2 + e2**2 + e3**2) - 6371e3
     return alpha, beta, rho
