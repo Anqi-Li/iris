@@ -250,7 +250,7 @@ plt.legend()
 edges_alpha = np.linspace(tan_alpha.min()-0.01,
                           tan_alpha.max()+0.01, 2) #radian
 edges_beta = np.arange(tan_beta.min()-0.1,
-                         tan_beta.max()+0.15, 0.02) #radian (0.2 degree in Degenstein 2004)
+                         tan_beta.max()+0.15, 0.02) #radian (resolution 0.2 degree in Degenstein 2004)
 edges_rho = np.append(z,z_top) # meter
 edges = edges_alpha, edges_beta, edges_rho
 
@@ -272,7 +272,7 @@ row_len = l1.isel(mjd=im_lst).notnull().sum().item()
 from geometry_functions import los_points_fix_dl
 from oem_functions import jacobian_row
 
-dl = 3e3 #fixed distance between all points
+dl = 3e3 #m fixed distance between all points, this unit will be the same as pathlength matrix
 nop = 500 # choose number of points along the line
 K_row_idx = []
 K_col_idx = []
@@ -284,9 +284,9 @@ for image in im_lst:
     #====generate points of los for all pixels in each image
     #====all points in cartesian coordinate relative to the space craft
     sc_look_new = change_of_basis(n_crosstrack, n_vel, n_zenith, 
-                                  sc_look[image].T)
+                                  sc_look.isel(mjd=image))
     sc_pos_new = change_of_basis(n_crosstrack, n_vel, n_zenith, 
-                                 sc_pos[image])
+                                 sc_pos.isel(mjd=image))
     lx, ly, lz = los_points_fix_dl(sc_look_new, sc_pos_new, dl=dl, nop=nop)    
     #====convert xyz to alpha, beta, rho for all points
     los_alpha, los_beta, los_rho = cart2sphe(lx, ly, lz)
@@ -307,7 +307,7 @@ for image in im_lst:
         
 K_row_idx = np.concatenate(K_row_idx).astype('int')
 K_col_idx = np.concatenate(K_col_idx).astype('int')
-K_value = np.concatenate(K_value) # in meter
+K_value = np.concatenate(K_value) *1e2 # meter --> cm
 
 #==== create sparse matrix
 from scipy.sparse import coo_matrix
@@ -317,8 +317,8 @@ K_coo = coo_matrix((K_value, (K_row_idx, K_col_idx)), shape = (row_len, col_len)
 from oem_functions import linear_oem_sp
 import scipy.sparse as sp
 from chemi import cal_o2delta
-
-y = l1.isel(mjd=im_lst).stack(msure=('mjd','pixel')).dropna('msure').data  /np.pi
+normalize = 4*np.pi /0.5
+y = l1.isel(mjd=im_lst).stack(msure=('mjd','pixel')).dropna('msure').data *normalize
 #y = abs(y)
 
 gA_table = np.load('gA_table.npz')['gA']
@@ -340,8 +340,8 @@ gA = interp1d(z_table,
 xa_1d = cal_o2delta(o3_SMR_a, T_SMR, m_SMR, grid_rho, sza.sel(mjd=mjd[im_lst[0]]).item(), gA) * A_o2delta
 xa_1d = abs(xa_1d)
 xa = np.tile(xa_1d, (len(grid_alpha),len(grid_beta),1)).ravel()
-Sa = sp.diags((xa*0.3)**2, shape=(col_len, col_len))  #temp
-Se = sp.diags([1], shape=(measurement_id, measurement_id))* (1e11)**2 #(5e12)**2 #temp
+Sa = sp.diags((xa*1)**2, shape=(col_len, col_len))  #temp
+Se = sp.diags([1], shape=(measurement_id, measurement_id))* (1e13)**2 #(5e12)**2 #temp
 x_hat, G = linear_oem_sp(K_coo, Se, Sa, y, xa)
 
 
@@ -368,6 +368,7 @@ plt.figure()
 plt.plot((K_coo.dot(x_hat)-y)[zoom])
 plt.ylabel('residual')
 plt.show()
+
 plt.figure()
 plt.hist(((y-K_coo.dot(x_hat))/y)*100, range=(-100,100), bins=100)
 
@@ -410,9 +411,9 @@ ax.set(xlabel='VER',
       title='tomography VER (all columns along track)')
 for i in range(1,len(grid_alpha)-1):
     for j in range(1, len(grid_beta)-1):
-        ax.semilogx(result_tomo[i,j,:], grid_rho*1e-3, '*')
+        ax.semilogx(result_tomo.where(mr_tomo>0.9)[i,j,:], grid_rho*1e-3, '-')
 ax.semilogx(xa_1d, grid_rho*1e-3, 'k--', label='a priori')
 plt.legend()
 plt.show()
 
-
+print('normalization factor is', normalize)

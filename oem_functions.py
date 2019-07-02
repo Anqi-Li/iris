@@ -59,10 +59,11 @@ def linear_oem(K, Se, Sa, y, xa):
 import pandas as pd
 def jacobian_row(dll, lla_edges, los, pix_idx):
     #compute pathlength along 1 los (1 pixel) 
-    #dll: distance between each points along los
+    #dll: distance between each points along los 
     #los: lla coordinate of all points along los
     #lla_edges: atmospheric grid that you want to define in lla coordinate
     #(dll.shape = los.shape)
+    #(be aware that dll unit will be the same as the pathlength unit)
         
     edges_lat, edges_lon, edges_alt = lla_edges
     los_lat, los_lon, los_alt = los
