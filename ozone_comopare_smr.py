@@ -8,15 +8,12 @@ Created on Fri May 17 16:42:44 2019
 import requests 
 import numpy as np
 import json
-import sqlite3 as sql
 import matplotlib.pylab as plt
 from osirisl1services.readlevel1 import open_level1_ir
 from osirisl1services.services import Level1Services
 import sys
 sys.path.append('..')
-import numpy as np
 import xarray as xr
-import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 from scipy.interpolate import interp1d
 from netCDF4 import num2date
@@ -30,7 +27,8 @@ A_o2delta = 2.23e-4#2.58e-4#2.23e-4 # radiative lifetime of singlet delta to gro
 channel = 3
 #orbit = 20900
 #orbit = 22015
-orbit = 22643
+#orbit = 22643
+orbit = 37585
 
 ir = open_level1_ir(orbit, channel, valid=False)
 tan_alt = ir.l1.altitude.sel(pixel=slice(14, 128))
@@ -146,14 +144,14 @@ gA_table = np.load('gA_table.npz')['gA']
 z_table = np.load('gA_table.npz')['z']
 sza_table = np.load('gA_table.npz')['sza']
 month_table = np.load('gA_table.npz')['month']
-#xa = np.ones(len(z)) * 0 # temp
-#Sa = np.diag(np.ones(len(z))) *1e-9 #temp
 mr = np.zeros((len(day_mjd_lst), len(z)))
-#resi = np.zeros((len(day_mjd_lst), len(z)))
 resi = []
 result_1d = np.zeros((len(day_mjd_lst), len(z)))
 o3_iris = np.zeros((len(day_mjd_lst), len(z)))
 all_xa = np.zeros((len(day_mjd_lst), len(z)))
+ver_error = np.zeros((len(day_mjd_lst), len(z)))
+fr = 0.5 # filter fraction 
+normalize = np.pi*4 / fr
 for i in range(len(day_mjd_lst)):
     try:
         print(i, 'out of', len(day_mjd_lst))
@@ -165,7 +163,7 @@ for i in range(len(day_mjd_lst)):
                          fill_value="extrapolate")(z)
         m_SMR = interp1d(z_smr[closest_scan_idx,:], m[closest_scan_idx,:],
                          fill_value="extrapolate")(z)
-        #        gA = gfactor(0.21*m_SMR, T_SMR, z, sza.sel(mjd=day_mjd_lst[i]).item())
+#        gA = gfactor(0.21*m_SMR, T_SMR, z, sza.sel(mjd=day_mjd_lst[i]).item())
         gA = interp1d(z_table, 
                       gA_table[:,(np.abs(month_table - start_month)).argmin(), 0,
                                (np.abs(sza_table - sza.sel(mjd=day_mjd_lst[i]).item())).argmin()])(z)
@@ -173,13 +171,13 @@ for i in range(len(day_mjd_lst)):
         xa = cal_o2delta(o3_SMR_a, T_SMR, m_SMR, z, sza.sel(mjd=day_mjd_lst[i]).item(), gA) * A_o2delta
         Sa = np.diag(xa**2)
         h = tan_alt.sel(mjd=day_mjd_lst[i], pixel=pixel[l1.notnull().sel(mjd=day_mjd_lst[i])])
-        K = pathl1d_iris(h, z, z_top)    
-        y = l1.sel(mjd=day_mjd_lst[i], pixel=pixel[l1.notnull().sel(mjd=day_mjd_lst[i])]).data
-        Se = np.diag(np.ones(len(y))) * (1e11)**2
-        #        Se = np.diag(np.ones(len(y))) *30
-        #    Se = np.diag(error.data[i,:]**2)
+        K = pathl1d_iris(h, z, z_top) * 1e2 # m-->cm    
+        y = l1.sel(mjd=day_mjd_lst[i], pixel=pixel[l1.notnull().sel(mjd=day_mjd_lst[i])]).data *normalize
+        Se = np.diag(np.ones(len(y))) *(1e11*normalize)**2
+
         x, A, Ss, Sm = linear_oem(K, Se, Sa, y, xa)
         result_1d[i,:] = x
+        ver_error[i,:] = np.diag(Sm)
         mr[i,:] = A.sum(axis=1) #sum over rows 
         all_xa[i,:] = xa
         resi.extend(y-K.dot(x))
@@ -187,7 +185,7 @@ for i in range(len(day_mjd_lst)):
         
         #lsq fit to get ozone
         o2delta_meas = x / A_o2delta # cm-3?
-        res_lsq = least_squares(residual, o3_SMR_a, bounds=(0, np.inf), verbose=1, 
+        res_lsq = least_squares(residual, o3_SMR_a, bounds=(-np.inf, np.inf), verbose=1, 
                                 args=(T_SMR, m_SMR, z, sza.sel(mjd=day_mjd_lst[i]).item(), gA, o2delta_meas))
         o3_iris[i,:] = res_lsq.x
     except:
@@ -200,13 +198,16 @@ for i in range(len(day_mjd_lst)):
 result_1d = xr.DataArray(result_1d, 
                          coords=(day_mjd_lst, z), 
                          dims=('mjd', 'z'), name='VER')
-result_1d.attrs['units'] = 'photons cm-3 s-1 ?'
+result_1d.attrs['units'] = 'photons cm-3 s-1'
 mr = np.array(mr)
 mr_threshold = 0.9
 #result_1d_mean = result_1d.where(mr>mr_threshold).mean(dim='mjd')
-ds = xr.Dataset({'ver': result_1d, 'mr':(['mjd', 'z'], mr), 'o3_iris':(['mjd', 'z'], o3_iris),
-                 'xa': (['mjd', 'z'], all_xa)})
-ds.to_netcdf('{}_propermodel.nc'.format(orbit))
+ds = xr.Dataset({'ver': result_1d, 
+                 'ver_error':(['mjd', 'z'], ver_error), 
+                 'mr':(['mjd', 'z'], mr), 
+                 'o3_iris':(['mjd', 'z'], o3_iris),
+                 'ver_xa': (['mjd', 'z'], all_xa)})
+ds.to_netcdf('ver_o3_{}.nc'.format(orbit))
 
 ##==== plot residual
 #label_interval = 300

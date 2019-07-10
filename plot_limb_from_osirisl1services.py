@@ -21,6 +21,7 @@ channel = 3
 #orbit = 20900
 orbit = 22643
 
+
 ir = open_level1_ir(orbit, channel, valid=False)
 tan_alt = ir.l1.altitude.sel(pixel=slice(14, 128))
 tan_lat = ir.l1.latitude.sel(pixel=slice(14, 128))
@@ -118,7 +119,7 @@ for im in range(len(mjd)):#range(193, len(mjd)):
     ax[0].axvline(x=mjd[im], color='r', linewidth=2)
     
     
-    data_interp.isel(mjd=im).plot.line(y='alt', ax=ax[1], marker='*', ls=' ')
+    data_interp.isel(mjd=im).plot.line(y='alt', ax=ax[1], marker='*', ls='-')
     #plt.ylim([50e3, 100e3])
     ax[1].legend([])
     ax[1].set(ylabel='Altitude / km',
@@ -128,7 +129,7 @@ for im in range(len(mjd)):#range(193, len(mjd)):
     ax[1].set_xscale('log')
     plt.tight_layout()
     
-    path = '/home/anqil/Documents/osiris_database/plots_for_presentations/Limb_workshop2019/Limb_radiance/{}/'.format(orbit)
-    filename = 'limb_radiance_{}_{}.png'.format(orbit, im)
-    plt.savefig(path+filename, bbox_inches='tight')
-    plt.close(fig)
+#    path = '/home/anqil/Documents/osiris_database/plots_for_presentations/Limb_workshop2019/Limb_radiance/{}/'.format(orbit)
+#    filename = 'limb_radiance_{}_{}.png'.format(orbit, im)
+#    plt.savefig(path+filename, bbox_inches='tight')
+#    plt.close(fig)

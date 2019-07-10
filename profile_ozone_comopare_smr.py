@@ -27,7 +27,8 @@ channel = 2
 #orbit = 20900
 #orbit = 22015
 #orbit = 22643
-orbit = 22101
+#orbit = 22101
+orbit = 37585
 
 ir = open_level1_ir(orbit, channel, valid=False)
 tan_alt = ir.l1.altitude.sel(pixel=slice(14, 128))
@@ -52,11 +53,10 @@ sun = coord.get_sun(now)
 sza = 90 - sun.transform_to(altaz).alt.deg
 sza = xr.DataArray(sza, coords=(mjd,), dims=('mjd',), name='sza')
 
-
-h_fov=2e3 #m
-v_fov=-tan_alt.diff(dim='pixel').mean()
-distance_sq = ((np.linalg.norm(sc_pos, axis=1)).mean()**2 - (6371e3+80e3)**2)
-solid_angle = h_fov*v_fov/distance_sq
+#h_fov=2e3 #m
+#v_fov=-tan_alt.diff(dim='pixel').mean()
+#distance_sq = ((np.linalg.norm(sc_pos, axis=1)).mean()**2 - (6371e3+80e3)**2)
+#solid_angle = h_fov*v_fov/distance_sq
 
 #%% clip data
 #====drop data below and above some altitudes
@@ -66,20 +66,13 @@ l1 = l1.where(tan_alt<top).where(tan_alt>bot)
 
 # retireval grid
 z = np.arange(bot, top, 1e3) # m
-#z = np.concatenate((np.arange(bot, 90e3, 1e3), 
-#                    np.arange(90e3, 100e3, 3e3), 
-#                    np.arange(100e3, top, 5e3)))
 z_top = z[-1] + 2e3
 
-#im_lst = np.arange(300,350,5)
-#im_lst = np.arange(2350,2425,5)
-#im_lst = np.arange(2496,2527,5)
-#im_lst = np.arange(1950,2000,5)
-#im_lst = np.arange(1520, 1570,5)
-im_lst = np.arange(1000, 1050, 1)
+im_lst = np.arange(1000-50, 1050-50, 1)
+#im_lst = np.arange(440,450,1)
 pix_lst = np.arange(22, 128)
 im = 0 
-label_interval = 10
+#label_interval = 10
 
 print(num2date(ir.mjd[0],units))
 print('number of images: ', len(im_lst))
@@ -124,23 +117,18 @@ plt.figure()
 sza.plot(x='mjd')
 plt.show()
 
-#
-#plt.figure()
-#data_interp.isel(mjd=im_lst).plot.line(y='alt')
-#plt.ylim([50e3, 100e3])
-#plt.legend([])
-
-
 
 #%% load SMR Ozone
 import requests 
 import numpy as np
 import json
-import sqlite3 as sql
+#import sqlite3 as sql
 import matplotlib.pylab as plt
 
 start = num2date(mjd[im_lst[0]]-1/24/60*5, units)
 end = num2date(mjd[im_lst[-1]]-1/24/60*4, units)
+#start = num2date(mjd[im_lst[0]], units)
+#end = num2date(mjd[im_lst[-1]], units)
 start_year = start.year
 start_month = start.month
 start_day = start.day
@@ -210,7 +198,7 @@ gA = gfactor(0.21*m_SMR, T_SMR, z, zenithangle)
 xa = cal_o2delta(o3_SMR_a, T_SMR, m_SMR, z, zenithangle, gA) * A_delta
 Sa = np.diag(xa**2) #temp
 fr = 0.5 # filter fraction 
-normalize = np.pi *4 / fr
+normalize = np.pi*4 / fr
 resi = []
 result_1d = np.zeros((len(im_lst), len(z)))
 mr = np.zeros(result_1d.shape)
@@ -218,9 +206,7 @@ for i in range(len(im_lst)):
     h = tan_alt.isel(mjd=im_lst[i]).sel(pixel=pixel[l1.notnull().isel(mjd=im_lst[i])])
     K = pathl1d_iris(h, z, z_top) * 1e2 # m-->cm 
     y = l1.isel(mjd=im_lst[i]).sel(pixel=pixel[l1.notnull().isel(mjd=im_lst[i])]).data *normalize
-#    Se = np.diag(np.ones(len(y))) * 30
-    Se = np.diag(np.ones(len(y))) *(1e11)**2
-#    Se = np.diag(error.data[i,:]**2)
+    Se = np.diag(np.ones(len(y))) *(1e11*normalize)**2
     x, A, Ss, Sm = linear_oem(K, Se, Sa, y, xa)
     result_1d[i,:] = x
     mr[i,:] = A.sum(axis=1) #sum over rows 
@@ -242,21 +228,14 @@ plt.plot(np.array(resi).ravel()[100:300])
 plt.ylabel('y-Kx')
 
 #==== plot VER contour
-#result_1d = abs(result_1d)
-#result_1d.plot(x='mjd', y='z', 
-#               norm=LogNorm(), 
-#               vmin=1e4, vmax=8e6, 
-#               size=3, aspect=3)
 plt.figure(figsize=(9,3))
 plt.pcolormesh(result_1d.mjd, result_1d.z, np.ma.masked_where(mr.T<mr_threshold, result_1d.T),
                norm=LogNorm(), vmin=1e4, vmax=8e6)
 ax = plt.gca()
 ax.set(title='IRIS 1d retrieved VER',
       xlabel='mjd')
-#ax.set_xticks(mjd[im_lst])
-#ax.set_xticklabels(np.round(tan_beta.sel(pixel=60).data*Re))
-ax.set_xticks(mjd[im_lst[::label_interval]])
-ax.set_xticklabels(im_lst[::label_interval])
+#ax.set_xticks(mjd[im_lst[::label_interval]])
+#ax.set_xticklabels(im_lst[::label_interval])
 plt.show()
 
 #==== plot VER in 1D
@@ -285,8 +264,7 @@ plt.axvline(x=mr_threshold, ls=':', color='k')
 plt.show()
 
 
-#%% lsq fit
-
+#%% lsq fit for ozone
 from chemi import cal_o2delta, cal_o2delta_thomas
 from scipy.optimize import least_squares
 
@@ -299,43 +277,47 @@ res_lsq = least_squares(residual, o3_init, bounds=(-np.inf, np.inf), verbose=1,
                         args=(T_SMR, m_SMR, z, zenithangle, gA, o2delta_meas))
 o3_iris = res_lsq.x
 
-
 #%% load OS data
 
 path = '/home/anqil/Documents/osiris_database/odin-osiris.usask.ca/Level2/CCI/OSIRIS_v5_10/'
-filename = 'ESACCI-OZONE-L2-LP-OSIRIS_ODIN-SASK_V5_10_HARMOZ_ALT-200503-fv0002.nc'
+filename = 'ESACCI-OZONE-L2-LP-OSIRIS_ODIN-SASK_V5_10_HARMOZ_ALT-{}{}-fv0002.nc'.format(start_year, str(start_month).zfill(2))
 data_os = xr.open_dataset(path+filename)
 o3_os = data_os.ozone_concentration * Av*1e-6 #molec cm-3
 error_os = data_os.ozone_concentration_standard_error * Av*1e-6 # molec cm-3
 m_os = data_os.pressure/data_os.temperature/8.314e4*Av #air mass density cm-3
 vmr_os = o3_os / m_os
 os_closest_scanno = abs(data_os.time - np.datetime64(Time(mjd[im_lst[im]], format='mjd').iso)).argmin()
+data_os.longitude[np.where(data_os.longitude<0)]=data_os.longitude[np.where(data_os.longitude<0)]+360
 
-#%% load MIPASS data
+#%% load mipas data
 def sph_distance(lat1, lat2, lon1, lon2, r):
     d_central_angle=np.arccos(np.sin(lat1)*np.sin(lat2) + np.cos(lat1)*np.cos(lat2)*np.cos(abs(lon1-lon2)))
     return r*d_central_angle
 
 path = '/misc/pearl/extdata/MIPAS/MA_UA_modes/MA/v5R/O3/V5R_O3_522/'
-filename = 'MIPAS-E_IMK.200503.V5R_O3_522.nc'
-data_mipass = xr.open_dataset(path+filename)
-m_mipass = data_mipass.pressure/data_mipass.temperature/8.314e4*Av #air mass density cm-3
+filename = 'MIPAS-E_IMK.{}{}.V5R_O3_522.nc'.format(start_year, str(start_month).zfill(2))
+data_mipas = xr.open_dataset(path+filename)
+m_mipas = data_mipas.pressure/data_mipas.temperature/8.314e4*Av #air mass density cm-3
 #search measurements made within 1 hour 
-mipass_scanno_range = np.where(abs(data_mipass.time 
-                                   - data_os.time[os_closest_scanno]) <= np.timedelta64(10, 'm'))[0]
+mipas_scanno_range = np.where(abs(data_mipas.time 
+                                   - np.datetime64(Time(mjd[im_lst[im]], format='mjd').iso)) <= np.timedelta64(59, 'm'))[0]
 
-m_mipass = m_mipass.isel(timegrid=mipass_scanno_range, altgrid=slice(12,80))
-vmr_o3_mipass = data_mipass.target.isel(timegrid=mipass_scanno_range, altgrid=slice(12,80))
-vmr_error_mipass = data_mipass.target_noise_error.isel(timegrid=mipass_scanno_range, altgrid=slice(12,80))
-o3_mipass = vmr_o3_mipass*1e-6*m_mipass
-error_mipass = vmr_error_mipass*1e-6*m_mipass
-z_mipass = data_mipass.altitude.isel(timegrid=mipass_scanno_range, altgrid=slice(12,80))
-lon_mipass = data_mipass.longitude.isel(timegrid=mipass_scanno_range)
-lat_mipass = data_mipass.latitude.isel(timegrid=mipass_scanno_range)
-t_mipass = data_mipass.time.isel(timegrid=mipass_scanno_range)
+m_mipas = m_mipas.isel(timegrid=mipas_scanno_range, altgrid=slice(12,80))
+vmr_o3_mipas = data_mipas.target.isel(timegrid=mipas_scanno_range, altgrid=slice(12,80))
+vmr_error_mipas = data_mipas.target_noise_error.isel(timegrid=mipas_scanno_range, altgrid=slice(12,80))
+o3_mipas = vmr_o3_mipas*1e-6*m_mipas
+error_mipas = vmr_error_mipas*1e-6*m_mipas
+z_mipas = data_mipas.altitude.isel(timegrid=mipas_scanno_range, altgrid=slice(12,80))
+lon_mipas = data_mipas.longitude.isel(timegrid=mipas_scanno_range) % 360
+lat_mipas = data_mipas.latitude.isel(timegrid=mipas_scanno_range)
+t_mipas = data_mipas.time.isel(timegrid=mipas_scanno_range)
 
-mipass_closest_scanno = sph_distance(lat_mipass, data_os.latitude.isel(time=os_closest_scanno),
-                                     lon_mipass, data_os.longitude.isel(time=os_closest_scanno), 1).argmin()
+
+mipas_closest_scanno = sph_distance(lat_mipas, data_os.latitude.isel(time=os_closest_scanno),
+                                     lon_mipas, data_os.longitude.isel(time=os_closest_scanno)%360, 1).argmin()
+mipas_distance = sph_distance(lat_mipas, data_os.latitude.isel(time=os_closest_scanno),
+                                     lon_mipas, data_os.longitude.isel(time=os_closest_scanno)%360, 6370).min()
+
 
 #%% compare
 #####################################3
@@ -344,10 +326,6 @@ plt.figure()
 plt.plot(o3_iris[mr[im,:]>mr_threshold], z[mr[im,:]>mr_threshold], '.',
          label='IRIS (mr>{})'.format(mr_threshold))
 plt.plot(o3_smr_a, z_smr, color='gray', ls='--', label='SMR apriori')
-#plt.fill_betweenx(z[mr[im,:]>mr_threshold], 
-#                  (o3_iris-Ss.sum(axis=1))[mr[im,:]>mr_threshold],
-#                  (o3_iris+Ss.sum(axis=1))[mr[im,:]>mr_threshold],
-#                  alpha=0.5, edgecolor='blue', facecolor='blue', label='IRIS')
 plt.fill_betweenx(data_os.altitude*1e3, 
                   (o3_os-error_os).isel(time=os_closest_scanno),
                   (o3_os+error_os).isel(time=os_closest_scanno),
@@ -357,10 +335,10 @@ plt.fill_betweenx(z_smr[AVK_smr.sum(axis=1)>mr_threshold],
                   (o3_smr+error_smr)[AVK_smr.sum(axis=1)>mr_threshold],
                   alpha=0.5, edgecolor='orange', facecolor='orange', 
                   label='SMR (mr>{})'.format(mr_threshold))
-plt.fill_betweenx(z_mipass.isel(timegrid=mipass_closest_scanno)*1e3,
-                  (o3_mipass-error_mipass).isel(timegrid=mipass_closest_scanno),
-                  (o3_mipass+error_mipass).isel(timegrid=mipass_closest_scanno),
-                  alpha=0.5, edgecolor='k', facecolor='k', label='MIPASS')
+plt.fill_betweenx(z_mipas.isel(timegrid=mipas_closest_scanno)*1e3,
+                  (o3_mipas-error_mipas).isel(timegrid=mipas_closest_scanno),
+                  (o3_mipas+error_mipas).isel(timegrid=mipas_closest_scanno),
+                  alpha=0.5, edgecolor='k', facecolor='k', label='mipas {}km'.format(np.round(mipas_distance.data)))
 plt.legend()
 ax = plt.gca()
 ax.set_xscale('log')
@@ -385,10 +363,10 @@ plt.fill_betweenx(z_smr[AVK_smr.sum(axis=1)>mr_threshold],
                   1e6*(o3_vmr+error_vmr)[AVK_smr.sum(axis=1)>mr_threshold],
                   alpha=0.5, edgecolor='orange', facecolor='orange', 
                   label='SMR (mr>{})'.format(mr_threshold))
-plt.fill_betweenx(z_mipass.isel(timegrid=mipass_closest_scanno)*1e3,
-                  (vmr_o3_mipass-vmr_error_mipass).isel(timegrid=mipass_closest_scanno),
-                  (vmr_o3_mipass+vmr_error_mipass).isel(timegrid=mipass_closest_scanno),
-                  alpha=0.5, edgecolor='k', facecolor='k', label='MIPASS')
+plt.fill_betweenx(z_mipas.isel(timegrid=mipas_closest_scanno)*1e3,
+                  (vmr_o3_mipas-vmr_error_mipas).isel(timegrid=mipas_closest_scanno),
+                  (vmr_o3_mipas+vmr_error_mipas).isel(timegrid=mipas_closest_scanno),
+                  alpha=0.5, edgecolor='k', facecolor='k', label='mipas {}km'.format(np.round(mipas_distance.data)))
 plt.legend(loc='upper right')
 ax = plt.gca()
 ax.set_xscale('linear')
@@ -403,12 +381,14 @@ plt.show()
 #%%
 #% location
 plt.figure()
-plt.plot(data_os.longitude.isel(time=os_closest_scanno)+360, 
-         data_os.latitude.isel(time=os_closest_scanno), 'g*')
-plt.plot(tan_lon.isel(mjd=im_lst[im]), tan_lat.isel(mjd=im_lst[im]), '*', color='C0', label='iris')
+plt.plot(tan_lon.isel(mjd=im_lst[im]), tan_lat.isel(mjd=im_lst[im]), 
+         '*', color='C0', label='iris')
+plt.plot(data_os.longitude.isel(time=os_closest_scanno) %360,
+         data_os.latitude.isel(time=os_closest_scanno), 'g*', label='os')
 plt.plot(result['Longitude'], result['Latitude'], '*', color='r', label='smr')
-plt.plot(lon_mipass[mipass_closest_scanno]+360,
-         lat_mipass[mipass_closest_scanno], '*', color='k', label='mipass')
+plt.plot(lon_mipas[mipas_closest_scanno],
+         lat_mipas[mipas_closest_scanno], '*', color='k', label='mipas')
+
 plt.legend()
 plt.xlabel('lon')
 plt.ylabel('lat')
@@ -418,5 +398,5 @@ plt.show()
 print('iris data taken in', num2date(mjd[im_lst[im]], units))
 print('smr data taken in', num2date(result['MJD'], units))
 print('os data taken in', data_os.time[os_closest_scanno].data)
-print('mipass data taken in', t_mipass[mipass_closest_scanno].data)
+print('mipas data taken in', t_mipas[mipas_closest_scanno].data)
 
