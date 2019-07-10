@@ -28,7 +28,7 @@ channel = 3
 #orbit = 20900
 #orbit = 22015
 #orbit = 22643
-orbit = 37585
+orbit = 37586
 
 ir = open_level1_ir(orbit, channel, valid=False)
 tan_alt = ir.l1.altitude.sel(pixel=slice(14, 128))
@@ -144,69 +144,120 @@ gA_table = np.load('gA_table.npz')['gA']
 z_table = np.load('gA_table.npz')['z']
 sza_table = np.load('gA_table.npz')['sza']
 month_table = np.load('gA_table.npz')['month']
-mr = np.zeros((len(day_mjd_lst), len(z)))
-resi = []
-result_1d = np.zeros((len(day_mjd_lst), len(z)))
-o3_iris = np.zeros((len(day_mjd_lst), len(z)))
-all_xa = np.zeros((len(day_mjd_lst), len(z)))
-ver_error = np.zeros((len(day_mjd_lst), len(z)))
+#mr = np.zeros((len(day_mjd_lst), len(z)))
+#resi = []
+#result_1d = np.zeros((len(day_mjd_lst), len(z)))
+#o3_iris = np.zeros((len(day_mjd_lst), len(z)))
+#all_xa = np.zeros((len(day_mjd_lst), len(z)))
+#ver_error = np.zeros((len(day_mjd_lst), len(z)))
+#fr = 0.5 # filter fraction 
+#normalize = np.pi*4 / fr
+#for i in range(len(day_mjd_lst)):
+#    try:
+#        print(i, 'out of', len(day_mjd_lst))
+#        #match the closest scan of smr 
+#        closest_scan_idx = (np.abs(mjd_smr - day_mjd_lst[i])).argmin()
+#        o3_SMR_a = interp1d(z_smr[closest_scan_idx,:], o3_smr_a[closest_scan_idx,:],
+#                           fill_value="extrapolate")(z)
+#        T_SMR = interp1d(z_smr[closest_scan_idx,:], T_smr[closest_scan_idx,:],
+#                         fill_value="extrapolate")(z)
+#        m_SMR = interp1d(z_smr[closest_scan_idx,:], m[closest_scan_idx,:],
+#                         fill_value="extrapolate")(z)
+##        gA = gfactor(0.21*m_SMR, T_SMR, z, sza.sel(mjd=day_mjd_lst[i]).item())
+#        gA = interp1d(z_table, 
+#                      gA_table[:,(np.abs(month_table - start_month)).argmin(), 0,
+#                               (np.abs(sza_table - sza.sel(mjd=day_mjd_lst[i]).item())).argmin()])(z)
+#        
+#        xa = cal_o2delta(o3_SMR_a, T_SMR, m_SMR, z, sza.sel(mjd=day_mjd_lst[i]).item(), gA) * A_o2delta
+#        Sa = np.diag(xa**2)
+#        h = tan_alt.sel(mjd=day_mjd_lst[i], pixel=pixel[l1.notnull().sel(mjd=day_mjd_lst[i])])
+#        K = pathl1d_iris(h, z, z_top) * 1e2 # m-->cm    
+#        y = l1.sel(mjd=day_mjd_lst[i], pixel=pixel[l1.notnull().sel(mjd=day_mjd_lst[i])]).data *normalize
+#        Se = np.diag(np.ones(len(y))) *(1e11*normalize)**2
+#
+#        x, A, Ss, Sm = linear_oem(K, Se, Sa, y, xa)
+#        result_1d[i,:] = x
+#        ver_error[i,:] = np.diag(Sm)
+#        mr[i,:] = A.sum(axis=1) #sum over rows 
+#        all_xa[i,:] = xa
+#        resi.extend(y-K.dot(x))
+#        #    resi[i,:] = (y-K.dot(x))
+#        
+#        #lsq fit to get ozone
+#        o2delta_meas = x / A_o2delta # cm-3?
+#        res_lsq = least_squares(residual, o3_SMR_a, bounds=(-np.inf, np.inf), verbose=1, 
+#                                args=(T_SMR, m_SMR, z, sza.sel(mjd=day_mjd_lst[i]).item(), gA, o2delta_meas))
+#        o3_iris[i,:] = res_lsq.x
+#    except:
+#        print('error occur in ', i)
+#        result_1d[i,:] = np.ones(len(z)) * np.nan
+#        mr[i,:] = np.ones(len(z)) * np.nan
+#        o3_iris[i,:] = np.ones(len(z)) * np.nan
+#        pass
+
+# organize resulting arrays and save in nc file
+#result_1d = xr.DataArray(result_1d, 
+#                         coords=(day_mjd_lst, z), 
+#                         dims=('mjd', 'z'), name='VER')
+#result_1d.attrs['units'] = 'photons cm-3 s-1'
+#mr = np.array(mr)
+#mr_threshold = 0.9
+##result_1d_mean = result_1d.where(mr>mr_threshold).mean(dim='mjd')
+#ds = xr.Dataset({'ver': result_1d, 
+#                 'ver_error':(['mjd', 'z'], ver_error), 
+#                 'mr':(['mjd', 'z'], mr), 
+#                 'o3_iris':(['mjd', 'z'], o3_iris),
+#                 'ver_xa': (['mjd', 'z'], all_xa)})
+#ds.to_netcdf('ver_o3_{}.nc'.format(orbit))
+
 fr = 0.5 # filter fraction 
 normalize = np.pi*4 / fr
-for i in range(len(day_mjd_lst)):
-    try:
-        print(i, 'out of', len(day_mjd_lst))
-        #match the closest scan of smr 
-        closest_scan_idx = (np.abs(mjd_smr - day_mjd_lst[i])).argmin()
-        o3_SMR_a = interp1d(z_smr[closest_scan_idx,:], o3_smr_a[closest_scan_idx,:],
-                           fill_value="extrapolate")(z)
-        T_SMR = interp1d(z_smr[closest_scan_idx,:], T_smr[closest_scan_idx,:],
-                         fill_value="extrapolate")(z)
-        m_SMR = interp1d(z_smr[closest_scan_idx,:], m[closest_scan_idx,:],
-                         fill_value="extrapolate")(z)
+from multiprocessing import Pool
+def f(i):
+    print(i, 'out of', len(day_mjd_lst))
+    #match the closest scan of smr 
+    closest_scan_idx = (np.abs(mjd_smr - day_mjd_lst[i])).argmin()
+    o3_SMR_a = interp1d(z_smr[closest_scan_idx,:], o3_smr_a[closest_scan_idx,:],
+                       fill_value="extrapolate")(z)
+    T_SMR = interp1d(z_smr[closest_scan_idx,:], T_smr[closest_scan_idx,:],
+                     fill_value="extrapolate")(z)
+    m_SMR = interp1d(z_smr[closest_scan_idx,:], m[closest_scan_idx,:],
+                     fill_value="extrapolate")(z)
 #        gA = gfactor(0.21*m_SMR, T_SMR, z, sza.sel(mjd=day_mjd_lst[i]).item())
-        gA = interp1d(z_table, 
-                      gA_table[:,(np.abs(month_table - start_month)).argmin(), 0,
-                               (np.abs(sza_table - sza.sel(mjd=day_mjd_lst[i]).item())).argmin()])(z)
-        
-        xa = cal_o2delta(o3_SMR_a, T_SMR, m_SMR, z, sza.sel(mjd=day_mjd_lst[i]).item(), gA) * A_o2delta
-        Sa = np.diag(xa**2)
-        h = tan_alt.sel(mjd=day_mjd_lst[i], pixel=pixel[l1.notnull().sel(mjd=day_mjd_lst[i])])
-        K = pathl1d_iris(h, z, z_top) * 1e2 # m-->cm    
-        y = l1.sel(mjd=day_mjd_lst[i], pixel=pixel[l1.notnull().sel(mjd=day_mjd_lst[i])]).data *normalize
-        Se = np.diag(np.ones(len(y))) *(1e11*normalize)**2
-
-        x, A, Ss, Sm = linear_oem(K, Se, Sa, y, xa)
-        result_1d[i,:] = x
-        ver_error[i,:] = np.diag(Sm)
-        mr[i,:] = A.sum(axis=1) #sum over rows 
-        all_xa[i,:] = xa
-        resi.extend(y-K.dot(x))
-        #    resi[i,:] = (y-K.dot(x))
-        
-        #lsq fit to get ozone
-        o2delta_meas = x / A_o2delta # cm-3?
-        res_lsq = least_squares(residual, o3_SMR_a, bounds=(-np.inf, np.inf), verbose=1, 
-                                args=(T_SMR, m_SMR, z, sza.sel(mjd=day_mjd_lst[i]).item(), gA, o2delta_meas))
-        o3_iris[i,:] = res_lsq.x
-    except:
-        print('error occur in ', i)
-        result_1d[i,:] = np.ones(len(z)) * np.nan
-        mr[i,:] = np.ones(len(z)) * np.nan
-        o3_iris[i,:] = np.ones(len(z)) * np.nan
-        pass
+    gA = interp1d(z_table, 
+                  gA_table[:,(np.abs(month_table - start_month)).argmin(), 0,
+                           (np.abs(sza_table - sza.sel(mjd=day_mjd_lst[i]).item())).argmin()])(z)
     
-result_1d = xr.DataArray(result_1d, 
-                         coords=(day_mjd_lst, z), 
-                         dims=('mjd', 'z'), name='VER')
-result_1d.attrs['units'] = 'photons cm-3 s-1'
-mr = np.array(mr)
-mr_threshold = 0.9
-#result_1d_mean = result_1d.where(mr>mr_threshold).mean(dim='mjd')
+    xa = cal_o2delta(o3_SMR_a, T_SMR, m_SMR, z, sza.sel(mjd=day_mjd_lst[i]).item(), gA) * A_o2delta
+    Sa = np.diag(xa**2)
+    h = tan_alt.sel(mjd=day_mjd_lst[i], pixel=pixel[l1.notnull().sel(mjd=day_mjd_lst[i])])
+    K = pathl1d_iris(h, z, z_top) * 1e2 # m-->cm    
+    y = l1.sel(mjd=day_mjd_lst[i], pixel=pixel[l1.notnull().sel(mjd=day_mjd_lst[i])]).data *normalize
+    Se = np.diag(np.ones(len(y))) *(1e11*normalize)**2
+
+    x, A, Ss, Sm = linear_oem(K, Se, Sa, y, xa)
+
+    #lsq fit to get ozone
+    o2delta_meas = x / A_o2delta # cm-3?
+    res_lsq = least_squares(residual, o3_SMR_a, bounds=(-np.inf, np.inf), verbose=0, 
+                            args=(T_SMR, m_SMR, z, sza.sel(mjd=day_mjd_lst[i]).item(), gA, o2delta_meas))
+#    o3_iris[i,:] = res_lsq.x
+    
+    return x, xa, np.diag(Sm), A.sum(axis=1), res_lsq.x, o3_SMR_a
+
+with Pool(processes=4) as pool:
+    result = np.array(pool.map(f, range(len(day_mjd_lst)))) #len(day_mjd_lst)
+
+# organize resulting arrays and save in nc file
+result_1d = xr.DataArray(result[:,0,:], 
+                         coords=(day_mjd_lst[:4], z), 
+                         dims=('mjd', 'z'), name='VER', attrs={'units': 'photons cm-3 s-1'})
 ds = xr.Dataset({'ver': result_1d, 
-                 'ver_error':(['mjd', 'z'], ver_error), 
-                 'mr':(['mjd', 'z'], mr), 
-                 'o3_iris':(['mjd', 'z'], o3_iris),
-                 'ver_xa': (['mjd', 'z'], all_xa)})
+                 'ver_apriori': (['mjd', 'z'], result[:,1,:], {'units': 'photons cm-3 s-1'}),
+                 'ver_error':(['mjd', 'z'], result[:,2,:], {'units': '(photons cm-3 s-1)**2'}), 
+                 'mr':(['mjd', 'z'], result[:,3,:]), 
+                 'o3_iris':(['mjd', 'z'], result[:,4,:], {'units': 'molecule cm-3'}),
+                 'o3_xa': (['mjd', 'z'], result[:,5,:], {'units': 'molecule cm-3'})})
 ds.to_netcdf('ver_o3_{}.nc'.format(orbit))
 
 ##==== plot residual
