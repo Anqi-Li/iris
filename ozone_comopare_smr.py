@@ -28,7 +28,7 @@ channel = 3
 #orbit = 20900
 #orbit = 22015
 #orbit = 22643
-orbit = 37586
+orbit = 37587
 
 ir = open_level1_ir(orbit, channel, valid=False)
 tan_alt = ir.l1.altitude.sel(pixel=slice(14, 128))
@@ -250,7 +250,7 @@ with Pool(processes=4) as pool:
 
 # organize resulting arrays and save in nc file
 result_1d = xr.DataArray(result[:,0,:], 
-                         coords=(day_mjd_lst[:4], z), 
+                         coords=(day_mjd_lst, z), 
                          dims=('mjd', 'z'), name='VER', attrs={'units': 'photons cm-3 s-1'})
 ds = xr.Dataset({'ver': result_1d, 
                  'ver_apriori': (['mjd', 'z'], result[:,1,:], {'units': 'photons cm-3 s-1'}),
@@ -258,7 +258,8 @@ ds = xr.Dataset({'ver': result_1d,
                  'mr':(['mjd', 'z'], result[:,3,:]), 
                  'o3_iris':(['mjd', 'z'], result[:,4,:], {'units': 'molecule cm-3'}),
                  'o3_xa': (['mjd', 'z'], result[:,5,:], {'units': 'molecule cm-3'})})
-ds.to_netcdf('ver_o3_{}.nc'.format(orbit))
+path = '/home/anqil/Documents/osiris_database/iris_ver_o3/'
+ds.to_netcdf(path+'ver_o3_{}.nc'.format(orbit))
 
 ##==== plot residual
 #label_interval = 300

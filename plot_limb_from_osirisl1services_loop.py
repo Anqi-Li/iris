@@ -5,6 +5,7 @@ Created on Wed Jul  3 14:23:52 2019
 
 @author: anqil
 """
+from osirisl1services.pyhdfadapter import HDF4VS
 from osirisl1services.readlevel1 import open_level1_ir
 from osirisl1services.services import Level1Services
 import numpy as np
@@ -56,6 +57,7 @@ def plot_iris_limb(orbit, channel, figure_dir):
 #    #plt.close(fig)
 #    fig.clf()
     del ir, tan_alt, l1, data_interp
+    print(HDF4VS.cache_info())
     return
 
 import multiprocessing as mp
