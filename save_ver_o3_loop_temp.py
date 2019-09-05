@@ -83,7 +83,7 @@ def main(orbit):
     
     result = []
     for i in range(len(day_mjd_lst)):
-        print(i, 'out of mjd_lst ', len(day_mjd_lst))
+        print(i, 'in mjd_lst ', len(day_mjd_lst), ', in orbit ', orbit)
         
     #        gA = gfactor(0.21*m_SMR, T_SMR, z, sza.sel(mjd=day_mjd_lst[i]).item())
         gA = interp1d(z_table, 
@@ -118,11 +118,26 @@ def main(orbit):
                      'mr':(['mjd', 'z'], result[:,3,:]), 
                      'o3_iris':(['mjd', 'z'], result[:,4,:], {'units': 'molecule cm-3'}),
                      'o3_xa': (['mjd', 'z'], result[:,5,:], {'units': 'molecule cm-3'})})
+    ds = ds.update({'sza':sza[sza<90], 
+                    'tan_lat': tan_lat.sel(mjd=day_mjd_lst), 
+                    'tan_lon':tan_lon.sel(mjd=day_mjd_lst), 
+                    'tan_alt':tan_alt.sel(mjd=day_mjd_lst)})    
     return ds
     
-if __name__ == '__main__':
-    path = '/home/anqil/Documents/osiris_database/iris_ver_o3/'
-    for orbit in range(37588, 37588+50, 20):
-        print('orbit: ', orbit)
+
+#%%
+def f(orbit):
+    try:
+        path = '/home/anqil/Documents/osiris_database/iris_ver_o3/'
         ds = main(orbit)
-        ds.to_netcdf(path+'ver_o3_{}.nc'.format(orbit))
+        ds.to_netcdf(path+'ver_o3_sza_{}.nc'.format(orbit))
+    except LookupError:
+        print('no ir data for orbit ', orbit)
+        pass
+    return
+
+if __name__ == '__main__':    
+    with Pool(processes=4) as pool:
+        pool.map(f, range(41348, 41348+2000, 20))    
+      
+    

@@ -53,6 +53,7 @@ def linear_oem(K, Se, Sa, y, xa):
     A = G.dot(K)
     Ss = (A - np.identity(len(xa))).dot(Sa).dot((A - np.identity(len(xa))).T) # smoothing error
     Sm = G.dot(Se).dot(G.T) #retrieval noise 
+    
     return x_hat.squeeze(), A, Ss, Sm
 
 #%% generate rows in jacobian for each measurement (pixel)

@@ -120,15 +120,13 @@ plt.show()
 
 #%% load SMR Ozone
 import requests 
-import numpy as np
 import json
 #import sqlite3 as sql
 import matplotlib.pylab as plt
 
 start = num2date(mjd[im_lst[0]]-1/24/60*5, units)
 end = num2date(mjd[im_lst[-1]]-1/24/60*4, units)
-#start = num2date(mjd[im_lst[0]], units)
-#end = num2date(mjd[im_lst[-1]], units)
+
 start_year = start.year
 start_month = start.month
 start_day = start.day
