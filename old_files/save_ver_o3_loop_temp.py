@@ -138,6 +138,6 @@ def f(orbit):
 
 if __name__ == '__main__':    
     with Pool(processes=4) as pool:
-        pool.map(f, range(41348, 41348+2000, 20))    
+        pool.map(f, range(36448, 37588, 20))    
       
     

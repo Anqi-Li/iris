@@ -62,7 +62,8 @@ def jfactors(O, O2, O3, N2, z, zenithangle):
     O3 = O3[None,:]
     N2 = N2[None,:]
 
-    sigma = loadmat('sigma.mat')
+    path = '/home/anqil/Documents/Python/iris/'
+    sigma = loadmat(path+'sigma.mat')
     sO = sigma['sO']
     sO2 = sigma['sO2']
     sO3 = sigma['sO3']
@@ -100,8 +101,8 @@ def gfactor(O2, T, z, zenithangle):
     sys.path.append('..')
     
     O2 = O2[None,:]
-
-    alines = loadmat('alines.mat')
+    path = '/home/anqil/Documents/Python/iris/'
+    alines = loadmat(path+'alines.mat')
     freq = alines['freq']
     Sj = alines['Sj']
     Elow = alines['Elow']

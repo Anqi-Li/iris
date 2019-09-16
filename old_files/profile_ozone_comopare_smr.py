@@ -68,7 +68,7 @@ l1 = l1.where(tan_alt<top).where(tan_alt>bot)
 z = np.arange(bot, top, 1e3) # m
 z_top = z[-1] + 2e3
 
-im_lst = np.arange(1000-50, 1050-50, 1)
+im_lst = np.arange(1500, 1600, 1)
 #im_lst = np.arange(440,450,1)
 pix_lst = np.arange(22, 128)
 im = 0 
@@ -84,28 +84,28 @@ data_interp = []
 for (data, alt) in zip(l1, tan_alt):
     f = interp1d(alt, data, bounds_error=False)
     data_interp.append(f(alts_interp))
-data_interp = xr.DataArray(data_interp, coords=(mjd, alts_interp), 
-                           dims=('mjd', 'alt'))
+data_interp = xr.DataArray(data_interp, coords=(np.arange(len(mjd)), alts_interp), 
+                           dims=('mjd_index', 'alt'))
 
 #%%====plotting
 fig, ax = plt.subplots(figsize=(18,5))
-data_interp.plot(x='mjd', y='alt', 
+data_interp.plot(x='mjd_index', y='alt', 
                  norm=LogNorm(), 
                  vmin=1e9, vmax=1e13)
 
 ax.set(title='From {} \n to {}, \n channel {}'.format(num2date(mjd[0],units),
           num2date(mjd[-1], units), channel))
-ax.axvline(x=mjd[im_lst[0]], color='k', linewidth=1)
-ax.axvline(x=mjd[im_lst[-1]], color='k', linewidth=1)
+ax.axvline(x=im_lst[0], color='k', linewidth=1)
+ax.axvline(x=im_lst[-1], color='k', linewidth=1)
 
 
 fig, ax = plt.subplots(ncols=2, nrows=1, sharey=True, figsize=(15,5))
-data_interp.isel(mjd=im_lst).plot(x='mjd', y='alt', 
+data_interp.isel(mjd_index=im_lst).plot(x='mjd_index', y='alt', 
                  norm=LogNorm(), 
                  vmin=1e9, vmax=1e13, 
                  ax=ax[0])
 
-data_interp.isel(mjd=im_lst).plot.line(y='alt', ax=ax[1], marker='*', ls=' ')
+data_interp.isel(mjd_index=im_lst).plot.line(y='alt', ax=ax[1], marker='*', ls=' ')
 #plt.ylim([50e3, 100e3])
 ax[1].legend([])
 ax[1].set(ylabel=' ',
@@ -113,9 +113,9 @@ ax[1].set(ylabel=' ',
 ax[1].set_xscale('log')
 plt.show()
 
-plt.figure()
-sza.plot(x='mjd')
-plt.show()
+#plt.figure()
+#sza.plot(x='mjd')
+#plt.show()
 
 
 #%% load SMR Ozone
