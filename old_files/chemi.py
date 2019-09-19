@@ -50,7 +50,7 @@ def oxygen_atom(m, T, o3, j3):
     o2 = 0.21*m
     ka = 6e-34*(300/T)**2.4
     kb = 8e-12 * np.exp(-2060 / T)
-    o = j3 * o3 / (ka * o2 * m - kb * o3)
+    o = j3 * o3 / (ka * o2 * m)# - kb * o3)
     return o
     
 def jfactors(O, O2, O3, N2, z, zenithangle):
@@ -62,7 +62,7 @@ def jfactors(O, O2, O3, N2, z, zenithangle):
     O3 = O3[None,:]
     N2 = N2[None,:]
 
-    path = '/home/anqil/Documents/Python/iris/'
+    path = '/home/anqil/Documents/osiris_database/ex_data/'
     sigma = loadmat(path+'sigma.mat')
     sO = sigma['sO']
     sO2 = sigma['sO2']
@@ -101,7 +101,7 @@ def gfactor(O2, T, z, zenithangle):
     sys.path.append('..')
     
     O2 = O2[None,:]
-    path = '/home/anqil/Documents/Python/iris/'
+    path = '/home/anqil/Documents/osiris_database/ex_data/'
     alines = loadmat(path+'alines.mat')
     freq = alines['freq']
     Sj = alines['Sj']
