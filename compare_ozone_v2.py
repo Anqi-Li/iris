@@ -46,13 +46,6 @@ sza = xr.DataArray(sza, coords=(mjd,), dims=('mjd',), name='sza')
 lst = np.mod(longitude.sel(pixel=60)/15 + np.modf(mjd)[0]*24, 24)
 lst = xr.DataArray(lst, coords=(mjd,), dims=('mjd',), name='sza')
 
-
-#%% load smr
-path = '/home/anqil/Documents/osiris_database/ex_data/'
-file = 'smr_2008_sza_interp.nc'
-smr = xr.open_dataset(path+file)
-smr = smr.where((smr.mjd>mjd[0]) & (smr.mjd<mjd[-1]), drop=True)
-
 #%% 1D inversion and retrieve ozone
 from scipy.optimize import least_squares
 from o2delta_model import cal_o2delta, gA
@@ -121,9 +114,10 @@ o3_clima = clima.o3_vmr * clima.m #cm-3
 
 #%% define oem inversion grid
 #====drop data below and above some altitudes
-top = 110e3
-bot = 60e3
-l1 = l1.where((altitude<top) & (altitude>bot))
+bot = 50e3
+top = 102e3
+
+l1 = l1.where((altitude<top) & (altitude>60e3))
 #====retireval grid
 z = np.arange(bot, top, 1e3) # m
 z = np.append(z, 149e3)
@@ -171,41 +165,73 @@ def f(i):
         mr = A.sum(axis=1)
         
         #lsq fit to get ozone
-#        o2delta_meas = x / A_o2delta # cm-3?
-#        res_lsq = least_squares(residual, np.interp(z, clima.z*1e3, o3_a), 
-#                                bounds=(-np.inf, np.inf), verbose=2, 
-#                                max_nfev=10, #temp
-#                                args=(np.interp(z, clima.z*1e3, T_a), 
-#                                      np.interp(z, clima.z*1e3, m_a), 
-#                                      z, sol_zen, 
-#                                      gA(np.interp(z, clima.z*1e3, p_a), sol_zen), 
-#                                      o2delta_meas))
-#        
-#        
-#        o3_iris = res_lsq.x
+        o2delta_meas = x / A_o2delta # cm-3?
+        res_lsq = least_squares(residual, np.interp(z, clima.z*1e3, o3_a), 
+                                bounds=(-np.inf, np.inf), verbose=2, 
+#                                max_nfev=3, #temp
+                                args=(np.interp(z, clima.z*1e3, T_a), 
+                                      np.interp(z, clima.z*1e3, m_a), 
+                                      z, sol_zen, 
+                                      gA(np.interp(z, clima.z*1e3, p_a), sol_zen), 
+                                      o2delta_meas))
+        
+        
+        o3_iris = res_lsq.x
         
 #    except:
 #        pass
 
-        return x, xa, np.diag(Sm), mr, np.zeros(len(z)), o3_a #temp
+        return x, xa, np.diag(Sm), mr, o3_iris, o3_a #temp
 
 with Pool(processes=4) as pool:
-    result = np.array(pool.map(f, range(len(day_mjd_lst)))) 
+    result = np.array(pool.map(f, range(len(day_mjd_lst[:4])))) 
     
 
 #
 # organize resulting arrays and save in nc file
 result_1d = xr.DataArray(np.stack(result[:,0]), 
-                         coords=(day_mjd_lst, z), 
+                         coords=(day_mjd_lst[:4], z), 
                          dims=('mjd', 'z'), name='VER', attrs={'units': 'photons cm-3 s-1'})
 da_o3_a = xr.DataArray(np.stack(result[:,5]), 
-                       coords=(day_mjd_lst, clima.z*1e3), 
+                       coords=(day_mjd_lst[:4], clima.z*1e3), 
                        dims=('mjd', 'clima_z'), name='O3 apriori', attrs={'units': 'molecule cm-3'})
 ds = xr.Dataset({'ver': result_1d, 
                  'ver_apriori': (['mjd', 'z'], np.stack(result[:,1]), {'units': 'photons cm-3 s-1'}),
                  'ver_error':(['mjd', 'z'], np.stack(result[:,2]), {'units': '(photons cm-3 s-1)**2'}), 
                  'mr':(['mjd', 'z'], np.stack(result[:,3])), 
-                 'o3_iris':(['mjd', 'z'], np.stack(result[:,4]), {'units': 'molecule cm-3'}),
+                 'o3':(['mjd', 'z'], np.stack(result[:,4]), {'units': 'molecule cm-3'}),
                  'o3_apriori': da_o3_a})
 #path = '/home/anqil/Documents/osiris_database/iris_ver_o3/'
 #ds.to_netcdf(path+'ver_o3_{}.nc'.format(orbit))
+    
+#%%
+from matplotlib.colors import LogNorm
+
+dds = xr.open_dataset('test_ds.nc')
+dds['mjd']=np.arange(len(dds.mjd))
+dds.z.assign_attris({'units': 'm'})
+#%%
+imjd=[100, 600, 1100]
+fig, ax = plt.subplots(nrows=1, ncols=2, sharey=True, figsize=(15,5),
+                       gridspec_kw={'width_ratios': [3, 1]})
+dds.ver.where(dds.mr>0.8).rename({'mjd':'index'}).plot(y='z', ax=ax[0], cmap='viridis', 
+             norm=LogNorm(vmin=1e4, vmax=2e7),  add_colorbar=False)
+dds.ver.where(dds.mr>0.8).isel(mjd=imjd).rename({'mjd':'index'}).plot.line(y='z', 
+             ls='-', marker='.', ax=ax[1], xscale='log')
+ax[0].set(ylim=(60e3, 100e3))
+ax[1].set(xlim=(1e4, 2e7))
+for i in imjd:
+    ax[0].axvline(x=dds.mjd[i], color='k')
+
+#%% single profile ozone compareison
+#% load smr
+path = '/home/anqil/Documents/osiris_database/ex_data/'
+file = 'smr_2008_sza_interp.nc'
+smr = xr.open_dataset(path+file)
+smr = smr.where((smr.mjd>mjd[0]) & (smr.mjd<mjd[-1]), drop=True)
+
+# load os
+path = '/home/anqil/Documents/osiris_database/odin-osiris.usask.ca/Level2/CCI/OSIRIS_v5_10/'
+file = 'ESACCI-OZONE-L2-LP-OSIRIS_ODIN-SASK_V5_10_HARMOZ_ALT-{}{}-fv0002.nc'
+os = xr.open_dataset(path+file.format(str(num2date(mjd[0], units).year), 
+                                      str(num2date(mjd[0], units).month).zfill(2)))
