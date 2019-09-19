@@ -293,6 +293,8 @@ def gB (pres,sol_zen):
 
 #%%
 def photolysis (z,sol_zen,o2,o3):
+    #z in m
+    #o2, o3 in cm-3
     #wavelength in nm
     wave=np.array([  7.5     ,  12.5     ,  17.5     ,  22.5     ,  27.5     ,
             32.5     ,  37.5     ,  42.5     ,  47.5     ,  52.5     ,
@@ -406,14 +408,15 @@ def photolysis (z,sol_zen,o2,o3):
         z_paths,path_step= path_z(z[-1],z_t,sol_zen,1000)
         tau=(so2*(np.exp(np.interp(z_paths,z,np.log(o2)))).sum()+
              so3*np.exp(np.interp(z_paths,z,np.log(o3))).sum()) * path_step *1e2 #m-->cm 
-        jo2=(irrad*so2*np.exp(-tau))
-        jo3=(irrad*so3*np.exp(-tau))
+        jo2, jo3 = (irrad* (so2, so3) *np.exp(-tau))
+#        jo3=(irrad*so3*np.exp(-tau))
         Jhart.append(jo3[np.logical_and(wave>210,wave<310)].sum())
         Jsrc.append(jo2[np.logical_and(wave>122,wave<175)].sum())
         Jlya.append(jo2[wave==121.567].sum())
         J3.append(jo3.sum())
     return np.array(Jhart), np.array(Jsrc), np.array(Jlya), np.array(J3)
 
+#%%
 def oxygen_atom(m, T, o3, j3):
     #only works for day, not night
     #(smith et al. 2011)
@@ -424,16 +427,16 @@ def oxygen_atom(m, T, o3, j3):
     return o
 
 
-
 #%%
 def cal_o2delta(o3, T, m, z, zenithangle, gA):
     # z unit should be in m
-    # concentration units should be in m-3
-    m = m*1e-6 # m-3 --> cm-3
+    # concentration units should be in cm-3
+#    o3 = o3*1e-6 #m-3 --> cm-3
+#    m = m*1e-6 # m-3 --> cm-3
     o2 = 0.21 * m 
     n2 = 0.78 * m 
     co2 = 405e-6*m 
-    o3 = o3*1e-6 #m-3 --> cm-3
+    
     
     jhart, jsrc, jlya, j3 = photolysis(z, zenithangle, o2, o3)
     o = oxygen_atom(m, T, o3, j3)
@@ -511,17 +514,18 @@ if __name__ == '__main__':
 #    ds = xr.open_dataset(path+file)
 #    o3 = ds.o3_vmr.values * ds.m.values
     file = '/home/anqil/Documents/osiris_database/ex_data/msis_cmam_climatology.nc'
-    ds = xr.open_dataset(file).sel(month=1, lat=35, method='nearest')
-    o3 = ds.o3_vmr.sel(lst_bins=18, method='nearest')*(ds.o2+ds.n2+ds.o) #m-3
-    sza = [30, 60, 85]
+    ds = xr.open_dataset(file).interp(month=1, lat=13.5)
+    m = (ds.o2+ds.n2+ds.o) * 1e-6 #cm-3
+    o3 = ds.o3_vmr.interp(lst_bins=6.876)* m #cm-3
+    sza = [30, 60, 85, 89.9]
     
     fig, ax = plt.subplots(nrows=1, ncols=2, sharey=True, figsize=(15,5))
-    ls = ['-', ':', '--'] 
+    ls = ['-', ':', '--', '-.'] 
  
     aaa = []
     for i in range(len(sza)):
 #        result = cal_o2delta(o3, ds.T.values, ds.m.values, ds.altgrid.values*1e3, sza[i])
-        result = cal_o2delta(o3.values, ds.T.values, (ds.o2+ds.n2+ds.o).values, 
+        result = cal_o2delta(o3.values, ds.T.values, m.values, 
                              ds.z.values*1e3, sza[i], gA(ds.p, sza[i]))
         aaa.append(result)
           
@@ -546,6 +550,6 @@ if __name__ == '__main__':
               ylabel = 'z',
               title = 'contribution to singlet delta, sza={}'.format(sza),
               xlim = (1e-5, 1e11),
-              ylim = (0, 105))
+              ylim = (60, 100))
     ax[1].set_xscale('log')
     
