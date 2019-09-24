@@ -130,7 +130,7 @@ def residual(o3, T, m, z, zenithangle, gA, o2delta_meas):
     plt.plot(o2delta_model, z) #temp
     return o2delta_meas - o2delta_model
 A_o2delta = 2.23e-4
-fr = 0.5 # filter fraction 
+fr = 0.72 # filter fraction 
 normalize = np.pi*4 / fr
 
 def f(i):

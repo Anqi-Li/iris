@@ -431,8 +431,7 @@ def oxygen_atom(m, T, o3, j3):
 def cal_o2delta(o3, T, m, z, zenithangle, gA):
     # z unit should be in m
     # concentration units should be in cm-3
-#    o3 = o3*1e-6 #m-3 --> cm-3
-#    m = m*1e-6 # m-3 --> cm-3
+
     o2 = 0.21 * m 
     n2 = 0.78 * m 
     co2 = 405e-6*m 
@@ -550,6 +549,6 @@ if __name__ == '__main__':
               ylabel = 'z',
               title = 'contribution to singlet delta, sza={}'.format(sza),
               xlim = (1e-5, 1e11),
-              ylim = (60, 100))
+              ylim = (60, 150))
     ax[1].set_xscale('log')
     
