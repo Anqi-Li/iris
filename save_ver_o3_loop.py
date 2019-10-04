@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Mon Sep 16 14:27:07 2019
+Created on Fri Oct  4 17:16:30 2019
 
 @author: anqil
 """
@@ -15,52 +15,6 @@ from matplotlib.colors import LogNorm
 from scipy.interpolate import interp1d
 from netCDF4 import num2date
 units = 'days since 1858-11-17 00:00:00.000'
-
-#%% load IRIS data
-#channel = 3
-#orbit = 37608
-#
-#ir = open_level1_ir(orbit, channel, valid=False)
-#altitude = ir.l1.altitude.sel(pixel=slice(14, 128))
-#latitude = ir.l1.latitude.sel(pixel=slice(14, 128))
-#longitude = ir.l1.longitude.sel(pixel=slice(14, 128))
-##sc_look = ir.l1.look_ecef.sel(pixel=slice(14, 128))
-##sc_pos = ir.l1.position_ecef
-#l1 = ir.data.sel(pixel=slice(14, 128)) 
-#mjd = ir.mjd.data
-#pixel = ir.pixel.sel(pixel=slice(14, 128)).data
-#
-## calculate sza
-#import astropy.coordinates as coord
-#from astropy.time import Time
-#import astropy.units as u
-#
-#loc = coord.EarthLocation(lon=longitude.sel(pixel=60) * u.deg,
-#                          lat=latitude.sel(pixel=60) * u.deg)
-#now = Time(ir.mjd, format='mjd', scale='utc')
-#altaz = coord.AltAz(location=loc, obstime=now)
-#sun = coord.get_sun(now)
-#sza = 90 - sun.transform_to(altaz).alt.deg
-#sza = xr.DataArray(sza, coords=(mjd,), dims=('mjd',), name='sza')
-#
-#lst = np.mod(longitude.sel(pixel=60)/15 + np.modf(mjd)[0]*24, 24)
-#lst = xr.DataArray(lst, coords=(mjd,), dims=('mjd',), name='sza')
-
-
-path = '/home/anqil/Downloads/stray_light_removed/'
-filename= 'ir_slc_{}_ch3.nc'.format(39000)
-
-ir = xr.open_dataset(path+filename)
-mjd = ir.mjd.data
-pixel = ir.pixel.sel(pixel=slice(14, 128)).data
-l1 = ir.sel(pixel=slice(14, 128)).data
-altitude = ir.altitude.sel(pixel=slice(14, 128))
-latitude = ir.latitude
-longtidue = ir.longitude
-sza = ir.sza
-lst = ir.apparent_solar_time.sel(pixel=60)
-
-#%% 1D inversion and retrieve ozone
 from scipy.optimize import least_squares
 from o2delta_model import cal_o2delta, gA
 from multiprocessing import Pool
@@ -119,6 +73,11 @@ def pathl1d_iris(h, z=np.arange(40e3, 110e3, 1e3), z_top=150e3):
     return pathl 
 
 
+def residual(o3, T, m, z, zenithangle, gA, o2delta_meas):
+    o2delta_model = cal_o2delta(o3, T, m, z, zenithangle, gA)[0]  
+#    plt.semilogx(o3, z) #temp
+#    plt.show()
+    return o2delta_meas - o2delta_model
 #%% load climatology
 path = '/home/anqil/Documents/osiris_database/ex_data/'
 file = 'msis_cmam_climatology.nc'
@@ -126,32 +85,39 @@ clima = xr.open_dataset(path+file)#.interp(z=z*1e-3)
 clima = clima.update({'m':(clima.o + clima.o2 + clima.n2)*1e-6}) #cm-3
 o3_clima = clima.o3_vmr * clima.m #cm-3
 
-#%% define oem inversion grid
+#%% Global variables
+A_o2delta = 2.23e-4
+fr = 0.72 # filter fraction 
+normalize = np.pi*4 / fr
+# define oem inversion grid
 #====drop data below and above some altitudes
 bot = 50e3
 top = 102e3
-
-l1 = l1.where((altitude<top) & (altitude>60e3))
 #====retireval grid
 z = np.arange(bot, top, 1e3) # m
 z = np.append(z, 149e3)
 z_top = z[-1] + 1e3
-day_mjd_lst = mjd[sza<90]
 
 #%%
-def residual(o3, T, m, z, zenithangle, gA, o2delta_meas):
-    o2delta_model = cal_o2delta(o3, T, m, z, zenithangle, gA)[0]  
-#    plt.semilogx(o3, z) #temp
-#    plt.show()
-    return o2delta_meas - o2delta_model
-A_o2delta = 2.23e-4
-fr = 0.72 # filter fraction 
-normalize = np.pi*4 / fr
-
-def f(i):
-#    try:
-        print(i, 'out of', len(day_mjd_lst))
-        
+def main(orbit):
+    path = '/home/anqil/Downloads/stray_light_removed/'
+    filename= 'ir_slc_{}_ch3.nc'.format(orbit)
+    
+    ir = xr.open_dataset(path+filename)
+    mjd = ir.mjd.data
+    pixel = ir.pixel.sel(pixel=slice(14, 128)).data
+    l1 = ir.sel(pixel=slice(14, 128)).data
+    altitude = ir.altitude.sel(pixel=slice(14, 128))
+    latitude = ir.latitude
+    longitude = ir.longitude
+    sza = ir.sza
+    lst = ir.apparent_solar_time.sel(pixel=60)
+    l1 = l1.where((altitude<top) & (altitude>60e3))
+    day_mjd_lst = mjd[sza<90][:2]
+    
+    result = []
+    for i in range(len(day_mjd_lst)):
+        print('scan ', i,' in orbit ', orbit)
         o3_a = o3_clima.interp(month=num2date(day_mjd_lst[i], units).month,
                                lat=latitude.sel( mjd=day_mjd_lst[i], method='nearest'),
                                lst_bins=lst.sel(mjd=day_mjd_lst[i], method='nearest'),
@@ -191,66 +157,42 @@ def f(i):
                                       o2delta_meas))
         
         o3_iris = res_lsq.x
-        
-#    except:
-#        pass
-
-        return x, xa, np.diag(Sm), mr, o3_iris, o3_a #temp
-
-with Pool(processes=4) as pool:
-    result = np.array(pool.map(f, range(len(day_mjd_lst)))) 
-
-#result = []
-#for i in range(3):
-#    result.append(f(i))
-
-
-
-#%% organize resulting arrays and save in nc file
-result_1d = xr.DataArray(np.stack(result[:,0]), 
-                         coords=(day_mjd_lst, z), 
-                         dims=('mjd', 'z'), name='VER', attrs={'units': 'photons cm-3 s-1'})
-da_o3_a = xr.DataArray(np.stack(result[:,5]), 
-                       coords=(day_mjd_lst, clima.z*1e3), 
-                       dims=('mjd', 'clima_z'), name='O3 apriori', attrs={'units': 'molecule cm-3'})
-ds = xr.Dataset({'ver': result_1d, 
-                 'ver_apriori': (['mjd', 'z'], np.stack(result[:,1]), {'units': 'photons cm-3 s-1'}),
-                 'ver_error':(['mjd', 'z'], np.stack(result[:,2]), {'units': '(photons cm-3 s-1)**2'}), 
-                 'mr':(['mjd', 'z'], np.stack(result[:,3])), 
-                 'o3':(['mjd', 'z'], np.stack(result[:,4]), {'units': 'molecule cm-3'}),
-                 'o3_apriori': da_o3_a})
-#path = '/home/anqil/Documents/osiris_database/iris_ver_o3/'
-#ds.to_netcdf(path+'ver_o3_{}.nc'.format(orbit))
+        result.append((x, xa, np.diag(Sm), mr, o3_iris, o3_a))
     
+    result = np.array(result)
+    
+    result_1d = xr.DataArray(np.stack(result[:,0]), 
+                             coords=(day_mjd_lst, z), 
+                             dims=('mjd', 'z'), name='VER', attrs={'units': 'photons cm-3 s-1'})
+    da_o3_a = xr.DataArray(np.stack(result[:,5]), 
+                           coords=(day_mjd_lst, clima.z*1e3), 
+                           dims=('mjd', 'clima_z'), name='O3 apriori', attrs={'units': 'molecule cm-3'})
+    ds = xr.Dataset({'ver': result_1d, 
+                     'ver_apriori': (['mjd', 'z'], np.stack(result[:,1]), {'units': 'photons cm-3 s-1'}),
+                     'ver_error':(['mjd', 'z'], np.stack(result[:,2]), {'units': '(photons cm-3 s-1)**2'}), 
+                     'mr':(['mjd', 'z'], np.stack(result[:,3])), 
+                     'o3':(['mjd', 'z'], np.stack(result[:,4]), {'units': 'molecule cm-3'}),
+                     'o3_apriori': da_o3_a,
+                     'sza':('mjd', sza.values),
+                     'lst':('mjd', lst.values),
+                     'longitude':('mjd', longitude.values),
+                     'latitude':('mjd', latitude.values)})
+    return ds
+
 #%%
-from matplotlib.colors import LogNorm
+def f(orbit):
+    try:
+        path = '/home/anqil/Documents/osiris_database/iris_ver_o3/'
+        ds = main(orbit)
+        ds.to_netcdf(path+'ver_o3_{}.nc'.format(orbit))
+    except LookupError:
+        print('no ir data for orbit ', orbit)
+        pass
+    return
 
-dds = xr.open_dataset('test_ds.nc')
-dds['mjd']=np.arange(len(dds.mjd))
-dds.z.assign_attris({'units': 'm'})
+if __name__ == '__main__':    
+    with Pool(processes=4) as pool:
+        pool.map(f, range(39000, 39099))    
+#    for orbit in range(39000,39005):
+#        f(orbit)
 
-#%%
-imjd=[100, 600, 1100]
-fig, ax = plt.subplots(nrows=1, ncols=2, sharey=True, figsize=(15,5),
-                       gridspec_kw={'width_ratios': [3, 1]})
-dds.ver.where(dds.mr>0.8).rename({'mjd':'index'}).plot(y='z', ax=ax[0], cmap='viridis', 
-             norm=LogNorm(vmin=1e4, vmax=2e7),  add_colorbar=False)
-dds.ver.where(dds.mr>0.8).isel(mjd=imjd).rename({'mjd':'index'}).plot.line(y='z', 
-             ls='-', marker='.', ax=ax[1], xscale='log')
-ax[0].set(ylim=(60e3, 100e3))
-ax[1].set(xlim=(1e4, 2e7))
-for i in imjd:
-    ax[0].axvline(x=dds.mjd[i], color='k')
-
-#%% single profile ozone compareison
-#% load smr
-path = '/home/anqil/Documents/osiris_database/ex_data/'
-file = 'smr_2008_sza_interp.nc'
-smr = xr.open_dataset(path+file)
-smr = smr.where((smr.mjd>mjd[0]) & (smr.mjd<mjd[-1]), drop=True)
-
-# load os
-path = '/home/anqil/Documents/osiris_database/odin-osiris.usask.ca/Level2/CCI/OSIRIS_v5_10/'
-file = 'ESACCI-OZONE-L2-LP-OSIRIS_ODIN-SASK_V5_10_HARMOZ_ALT-{}{}-fv0002.nc'
-os = xr.open_dataset(path+file.format(str(num2date(mjd[0], units).year), 
-                                      str(num2date(mjd[0], units).month).zfill(2)))

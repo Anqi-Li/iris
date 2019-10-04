@@ -407,7 +407,10 @@ def photolysis (z,sol_zen,o2,o3):
     for iz, z_t in enumerate(z) :
         z_paths,path_step= path_z(z[-1],z_t,sol_zen,1000)
         tau=(so2*(np.exp(np.interp(z_paths,z,np.log(o2)))).sum()+
-             so3*np.exp(np.interp(z_paths,z,np.log(o3))).sum()) * path_step *1e2 #m-->cm 
+             so3*(np.interp(z_paths,z,o3)).sum()) * path_step *1e2 #m-->cm 
+             
+#             so3*np.exp(np.interp(z_paths,z,np.log(o3))).sum()) * path_step *1e2 #m-->cm 
+             
         jo2, jo3 = (irrad* (so2, so3) *np.exp(-tau))
 #        jo3=(irrad*so3*np.exp(-tau))
         Jhart.append(jo3[np.logical_and(wave>210,wave<310)].sum())
@@ -415,6 +418,74 @@ def photolysis (z,sol_zen,o2,o3):
         Jlya.append(jo2[wave==121.567].sum())
         J3.append(jo3.sum())
     return np.array(Jhart), np.array(Jsrc), np.array(Jlya), np.array(J3)
+
+#%%
+def jfactors(O, O2, O3, N2, z, zenithangle):
+    from scipy.io import loadmat
+    def pathleng(heights, Xi):
+        # inputs: 
+        # heights -- altitdue grid
+        # Xi -- sun zenith angle
+        deltaz = heights[1:] - heights[:-1]
+        deltaz = np.append(deltaz,deltaz[-1])
+        heights = np.append(heights, heights[-1]+deltaz[-1])
+    
+        nheights = len(heights)
+        Re = 6370e3 # m Earth radius
+    
+        if Xi==90:
+            	Zt = heights
+        else:
+            	Zt = (Re + heights) * np.sin(Xi*np.pi/180) - Re
+    
+        pathl = np.zeros((nheights, nheights))
+        for j in range(nheights):
+            h = heights[j:] 
+            Ztj = Zt[j]
+            pathl[j,j:] = np.sqrt(h**2 + 2*Re*(h-Ztj) - Ztj**2)
+            
+        pathl[:,:-1] = pathl[:, 1:] - pathl[:, 0:-1]
+        pathl = pathl[:-1, :-1]
+        pathl = np.triu(pathl)
+        heights = heights[:-1]
+        nheights=nheights-1
+        return pathl    
+
+    O = O[None,:]
+    O2 = O2[None,:]
+    O3 = O3[None,:]
+    N2 = N2[None,:]
+
+    path = '/home/anqil/Documents/osiris_database/ex_data/'
+    sigma = loadmat(path+'sigma.mat')
+    sO = sigma['sO']
+    sO2 = sigma['sO2']
+    sO3 = sigma['sO3']
+    sN2 = sigma['sN2']
+    irrad = sigma['irrad']
+    wave = sigma['wave']
+    pathl = pathleng(z, zenithangle) * 1e2  # [m -> cm]
+    tau = np.matmul((np.matmul(sO, O) + np.matmul(sO2, O2) + np.matmul(sO3, O3) + np.matmul(sN2, N2)), pathl.T)
+
+    jO3 = irrad * sO3 * np.exp(-tau)
+    jO2 = irrad * sO2 * np.exp(-tau)
+#    jO3[tau == 0] = 0
+#    jO2[tau == 0] = 0
+
+    hartrange = (wave > 210) & (wave < 310)
+    srcrange = (wave > 122) & (wave < 175)
+    lyarange = 28  # wavelength = 121.567 nm
+    jhart = np.matmul(hartrange, jO3)
+    jsrc = np.matmul(srcrange, jO2)
+    jlya = jO2[lyarange][:]
+
+    j3 = np.sum(jO3, axis=0)
+    j2 = np.sum(jO2, axis=0)
+
+    jhart = np.squeeze(jhart)
+    jsrc = np.squeeze(jsrc)
+
+    return jhart, jsrc, jlya, j3, j2
 
 #%%
 def oxygen_atom(m, T, o3, j3):
@@ -437,7 +508,8 @@ def cal_o2delta(o3, T, m, z, zenithangle, gA):
     co2 = 405e-6*m 
     
     
-    jhart, jsrc, jlya, j3 = photolysis(z, zenithangle, o2, o3)
+#    jhart, jsrc, jlya, j3 = photolysis(z, zenithangle, o2, o3)
+    jhart, jsrc, jlya, j3, j2 = jfactors(np.zeros(len(m)), o2, o3, n2, z, zenithangle)
     o = oxygen_atom(m, T, o3, j3)
 
     qy_hart = 0.9 #quatumn yield
