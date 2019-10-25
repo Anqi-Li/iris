@@ -91,7 +91,7 @@ fr = 0.72 # filter fraction
 normalize = np.pi*4 / fr
 # define oem inversion grid
 #====drop data below and above some altitudes
-bot = 50e3
+bot = 60e3
 top = 102e3
 #====retireval grid
 z = np.arange(bot, top, 1e3) # m
@@ -113,59 +113,63 @@ def main(orbit):
     sza = ir.sza
     lst = ir.apparent_solar_time.sel(pixel=60)
     l1 = l1.where((altitude<top) & (altitude>60e3))
-    day_mjd_lst = mjd[sza<90][:2]
+    day_mjd_lst = mjd[sza<90]
     
     result = []
     for i in range(len(day_mjd_lst)):
-        print('scan ', i,' in orbit ', orbit)
-        o3_a = o3_clima.interp(month=num2date(day_mjd_lst[i], units).month,
-                               lat=latitude.sel( mjd=day_mjd_lst[i], method='nearest'),
-                               lst_bins=lst.sel(mjd=day_mjd_lst[i], method='nearest'),
-                               )
-        T_a = clima.T.interp(month=num2date(day_mjd_lst[i], units).month,
-                             lat=latitude.sel(mjd=day_mjd_lst[i])
-                             )
-        m_a = clima.m.interp(month=num2date(day_mjd_lst[i], units).month,
-                             lat=latitude.sel(mjd=day_mjd_lst[i])
-                             )
-        p_a = clima.p.interp(month=num2date(day_mjd_lst[i], units).month,
-                             lat=latitude.sel(mjd=day_mjd_lst[i])
-                             ) 
-
-        sol_zen = sza.sel(mjd=day_mjd_lst[i], method='nearest').item()
-        o2delta_a = cal_o2delta(o3_a.data, T_a.data, m_a.data, clima.z.data*1e3, 
-                                sol_zen, gA(p_a, sol_zen))[0]
-        xa = np.interp(z, clima.z*1e3, o2delta_a) * A_o2delta
-        Sa = np.diag(xa**2)
-        h = altitude.sel(mjd=day_mjd_lst[i]).where(l1.sel(mjd=day_mjd_lst[i]).notnull(), drop=True)
-        K = pathl1d_iris(h, z, z_top) * 1e2 # m-->cm    
-        y = l1.sel(mjd=day_mjd_lst[i]).where(l1.sel(mjd=day_mjd_lst[i]).notnull(),drop=True).data *normalize
-        Se = np.diag(np.ones(len(y))) *(1e11*normalize)**2 #temp
-        
-        x, A, Ss, Sm = linear_oem(K, Se, Sa, y, xa)
-        mr = A.sum(axis=1)
-        
-        #lsq fit to get ozone
-        o2delta_meas = x / A_o2delta # cm-3?
-        res_lsq = least_squares(residual, np.interp(z, clima.z*1e3, o3_a), 
-                                bounds=(-np.inf, np.inf), verbose=0, 
-#                                max_nfev=3, #temp
-                                args=(np.interp(z, clima.z*1e3, T_a), 
-                                      np.interp(z, clima.z*1e3, m_a), 
-                                      z, sol_zen, 
-                                      gA(np.interp(z, clima.z*1e3, p_a), sol_zen), 
-                                      o2delta_meas))
-        
-        o3_iris = res_lsq.x
-        result.append((x, xa, np.diag(Sm), mr, o3_iris, o3_a))
+        try:
+            print('scan ', i,' in orbit ', orbit)
+            o3_a = o3_clima.interp(month=num2date(day_mjd_lst[i], units).month,
+                                   lat=latitude.sel( mjd=day_mjd_lst[i], method='nearest'),
+                                   lst_bins=lst.sel(mjd=day_mjd_lst[i], method='nearest'),
+                                   )
+            T_a = clima.T.interp(month=num2date(day_mjd_lst[i], units).month,
+                                 lat=latitude.sel(mjd=day_mjd_lst[i])
+                                 )
+            m_a = clima.m.interp(month=num2date(day_mjd_lst[i], units).month,
+                                 lat=latitude.sel(mjd=day_mjd_lst[i])
+                                 )
+            p_a = clima.p.interp(month=num2date(day_mjd_lst[i], units).month,
+                                 lat=latitude.sel(mjd=day_mjd_lst[i])
+                                 ) 
+    
+            sol_zen = sza.sel(mjd=day_mjd_lst[i], method='nearest').item()
+            o2delta_a = cal_o2delta(o3_a.data, T_a.data, m_a.data, clima.z.data*1e3, 
+                                    sol_zen, gA(p_a, sol_zen))[0]
+            xa = np.interp(z, clima.z*1e3, o2delta_a) * A_o2delta
+            Sa = np.diag(xa**2)
+            h = altitude.sel(mjd=day_mjd_lst[i]).where(l1.sel(mjd=day_mjd_lst[i]).notnull(), drop=True)
+            K = pathl1d_iris(h, z, z_top) * 1e2 # m-->cm    
+            y = l1.sel(mjd=day_mjd_lst[i]).where(l1.sel(mjd=day_mjd_lst[i]).notnull(),drop=True).data *normalize
+            Se = np.diag(np.ones(len(y))) *(1e11*normalize)**2 #temp
+            
+            x, A, Ss, Sm = linear_oem(K, Se, Sa, y, xa)
+            mr = A.sum(axis=1)
+            
+            #lsq fit to get ozone
+            o2delta_meas = x / A_o2delta # cm-3?
+            res_lsq = least_squares(residual, np.interp(z, clima.z*1e3, o3_a), 
+                                    bounds=(-np.inf, np.inf), verbose=0, 
+    #                                max_nfev=3, #temp
+                                    args=(np.interp(z, clima.z*1e3, T_a), 
+                                          np.interp(z, clima.z*1e3, m_a), 
+                                          z, sol_zen, 
+                                          gA(np.interp(z, clima.z*1e3, p_a), sol_zen), 
+                                          o2delta_meas))
+            
+            o3_iris = res_lsq.x
+            result.append((x, xa, np.diag(Sm), mr, o3_iris, o3_a, day_mjd_lst[i]))
+        except:
+            pass
+                
     
     result = np.array(result)
     
     result_1d = xr.DataArray(np.stack(result[:,0]), 
-                             coords=(day_mjd_lst, z), 
+                             coords=(result[:,6], z), 
                              dims=('mjd', 'z'), name='VER', attrs={'units': 'photons cm-3 s-1'})
     da_o3_a = xr.DataArray(np.stack(result[:,5]), 
-                           coords=(day_mjd_lst, clima.z*1e3), 
+                           coords=(result[:,6], clima.z*1e3), 
                            dims=('mjd', 'clima_z'), name='O3 apriori', attrs={'units': 'molecule cm-3'})
     ds = xr.Dataset({'ver': result_1d, 
                      'ver_apriori': (['mjd', 'z'], np.stack(result[:,1]), {'units': 'photons cm-3 s-1'}),
@@ -173,10 +177,10 @@ def main(orbit):
                      'mr':(['mjd', 'z'], np.stack(result[:,3])), 
                      'o3':(['mjd', 'z'], np.stack(result[:,4]), {'units': 'molecule cm-3'}),
                      'o3_apriori': da_o3_a,
-                     'sza':('mjd', sza.values),
-                     'lst':('mjd', lst.values),
-                     'longitude':('mjd', longitude.values),
-                     'latitude':('mjd', latitude.values)})
+                     'sza':('mjd', sza.sel(mjd=result[:,6]).values),
+                     'lst':('mjd', lst.sel(mjd=result[:,6]).values),
+                     'longitude':('mjd', longitude.sel(mjd=result[:,6]).values),
+                     'latitude':('mjd', latitude.sel(mjd=result[:,6]).values)})
     return ds
 
 #%%
@@ -187,12 +191,15 @@ def f(orbit):
         ds.to_netcdf(path+'ver_o3_{}.nc'.format(orbit))
     except LookupError:
         print('no ir data for orbit ', orbit)
+        
         pass
+
     return
 
 if __name__ == '__main__':    
     with Pool(processes=4) as pool:
-        pool.map(f, range(39000, 39099))    
+        pool.map(f, range(39029, 39029+20))   
+#        pool.map(f, [39004, 39022, 39023, 39025, 39029])
 #    for orbit in range(39000,39005):
 #        f(orbit)
 

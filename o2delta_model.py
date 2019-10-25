@@ -292,6 +292,8 @@ def gB (pres,sol_zen):
     return g
 
 #%%
+from numba import jit
+#@jit(nopython = True, cache = True)
 def photolysis (z,sol_zen,o2,o3):
     #z in m
     #o2, o3 in cm-3
@@ -386,6 +388,8 @@ def photolysis (z,sol_zen,o2,o3):
            1.52e+14, 2.15e+14, 3.48e+14, 3.40e+14, 3.22e+14, 4.23e+14,
            4.95e+14, 5.44e+14, 5.93e+14, 6.75e+14, 8.15e+14, 7.81e+14,
            8.35e+14, 8.14e+14, 8.53e+14, 9.17e+14, 8.38e+14])
+    
+    @jit(nopython = True, cache = True)
     def path_z (z_top, z_t, sol_zen, nsteps):
         Re = 6375e3 #m
         sol_zen/=180/np.pi
@@ -405,7 +409,7 @@ def photolysis (z,sol_zen,o2,o3):
     Jhart=[]
     J3 = []
     for iz, z_t in enumerate(z) :
-        z_paths,path_step= path_z(z[-1],z_t,sol_zen,1000)
+        z_paths,path_step= path_z(z[-1],z_t,sol_zen,500)
         tau=(so2*(np.exp(np.interp(z_paths,z,np.log(o2)))).sum()+
              so3*(np.interp(z_paths,z,o3)).sum()) * path_step *1e2 #m-->cm 
              

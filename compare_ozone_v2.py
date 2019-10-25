@@ -9,8 +9,8 @@ Created on Mon Sep 16 14:27:07 2019
 import numpy as np
 import xarray as xr
 import matplotlib.pylab as plt
-from osirisl1services.readlevel1 import open_level1_ir
-from osirisl1services.services import Level1Services
+#from osirisl1services.readlevel1 import open_level1_ir
+#from osirisl1services.services import Level1Services
 from matplotlib.colors import LogNorm
 from scipy.interpolate import interp1d
 from netCDF4 import num2date
@@ -46,9 +46,9 @@ units = 'days since 1858-11-17 00:00:00.000'
 #lst = np.mod(longitude.sel(pixel=60)/15 + np.modf(mjd)[0]*24, 24)
 #lst = xr.DataArray(lst, coords=(mjd,), dims=('mjd',), name='sza')
 
-
+orbit = 39004
 path = '/home/anqil/Downloads/stray_light_removed/'
-filename= 'ir_slc_{}_ch3.nc'.format(39000)
+filename= 'ir_slc_{}_ch3.nc'.format(orbit)
 
 ir = xr.open_dataset(path+filename)
 mjd = ir.mjd.data
@@ -56,7 +56,7 @@ pixel = ir.pixel.sel(pixel=slice(14, 128)).data
 l1 = ir.sel(pixel=slice(14, 128)).data
 altitude = ir.altitude.sel(pixel=slice(14, 128))
 latitude = ir.latitude
-longtidue = ir.longitude
+longitude = ir.longitude
 sza = ir.sza
 lst = ir.apparent_solar_time.sel(pixel=60)
 
@@ -128,10 +128,10 @@ o3_clima = clima.o3_vmr * clima.m #cm-3
 
 #%% define oem inversion grid
 #====drop data below and above some altitudes
-bot = 50e3
+bot = 60e3
 top = 102e3
 
-l1 = l1.where((altitude<top) & (altitude>60e3))
+l1 = l1.where((altitude<top) & (altitude>bot))
 #====retireval grid
 z = np.arange(bot, top, 1e3) # m
 z = np.append(z, 149e3)
@@ -197,12 +197,12 @@ def f(i):
 
         return x, xa, np.diag(Sm), mr, o3_iris, o3_a #temp
 
-with Pool(processes=4) as pool:
-    result = np.array(pool.map(f, range(len(day_mjd_lst)))) 
+#with Pool(processes=4) as pool:
+#    result = np.array(pool.map(f, range(len(day_mjd_lst)))) 
 
-#result = []
-#for i in range(3):
-#    result.append(f(i))
+result = []
+for i in range(3):
+    result.append(f(i))
 
 
 
@@ -218,8 +218,12 @@ ds = xr.Dataset({'ver': result_1d,
                  'ver_error':(['mjd', 'z'], np.stack(result[:,2]), {'units': '(photons cm-3 s-1)**2'}), 
                  'mr':(['mjd', 'z'], np.stack(result[:,3])), 
                  'o3':(['mjd', 'z'], np.stack(result[:,4]), {'units': 'molecule cm-3'}),
-                 'o3_apriori': da_o3_a})
-#path = '/home/anqil/Documents/osiris_database/iris_ver_o3/'
+                 'o3_apriori': da_o3_a,
+                 'sza':('mjd', sza.sel(mjd=day_mjd_lst).values),
+                 'lst':('mjd', lst.sel(mjd=day_mjd_lst).values),
+                 'longitude':('mjd', longitude.sel(mjd=day_mjd_lst).values),
+                 'latitude':('mjd', latitude.sel(mjd=day_mjd_lst).values)})
+path = '/home/anqil/Documents/osiris_database/iris_ver_o3/'
 #ds.to_netcdf(path+'ver_o3_{}.nc'.format(orbit))
     
 #%%
