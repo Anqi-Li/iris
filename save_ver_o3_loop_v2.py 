@@ -113,7 +113,7 @@ l1 = ir.sel(pixel=slice(14, 128)).data
 error = ir.sel(pixel=slice(14, 128)).error
 
 quater = round(len(day_mjd_lst)/4) #temperary
-q = 1
+q = 3
 
 #%% load climatology
 path = '/home/anqil/Documents/osiris_database/ex_data/'

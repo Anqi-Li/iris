@@ -285,7 +285,7 @@ def gB (pres,sol_zen):
            -3.95132483e-02])
     
     presscale=np.exp(np.polyval(coeff,sol_zen))
-    print (gB85.shape,logp85corr.shape)
+#    print (gB85.shape,logp85corr.shape)
     
     g=np.interp(np.log(pres/np.cos(sol_zen*d2r)*presscale), logp85corr, gB85)
 
@@ -506,7 +506,7 @@ def oxygen_atom(m, T, o3, j3):
 def cal_o2delta(o3, T, m, z, zenithangle, gA):
     # z unit should be in m
     # concentration units should be in cm-3
-
+#    o3[o3<0] = 0
     o2 = 0.21 * m 
     n2 = 0.78 * m 
     co2 = 405e-6*m 
@@ -561,7 +561,7 @@ def cal_o2delta(o3, T, m, z, zenithangle, gA):
     k_o_o = 4.7e-33*(300/T)
     c_o2 = 6.6 #empirical quenchin coefficient
     c_o = 19 #empirical quenchin coefficient
-    k_o1d_o2 = 3.2e-11*np.exp(70/T) #
+    k_o1d_o2 = 3.2e-11*np.exp(70/T) 
     prod_o2sig_barth = k_o_o * o**2 * m * o2 / (c_o2*o2 + c_o*o)
     prod_o2sig = eff_o1d_o2sig * k_o1d_o2 * o2 * o1d + gA * o2 + prod_o2sig_barth
     f_o2sig_1d = eff_o1d_o2sig * k_o1d_o2 * o2 * o1d / prod_o2sig
@@ -582,49 +582,226 @@ def cal_o2delta(o3, T, m, z, zenithangle, gA):
     
     return o2delta, f_o2delta_o2sig*f_o2sig_barth, f_o2delta_o2sig*f_o2sig_gA, f_o2delta_o2sig*f_o2sig_1d*f_1d_o3 + f_o2delta_o3, f_o2delta_o2sig*f_o2sig_1d*f_1d_o2
 
+#%%
+def cal_o2delta_new(o3, T, m, z, zenithangle, p):
+    # z unit should be in m
+    # concentration units should be in cm-3
+    o3[o3<0] = 0#1e-8
+    o2 = 0.21 * m 
+    n2 = 0.78 * m 
+    co2 = 405e-6*m 
+    
+#    jhart, jsrc, jlya, j3 = photolysis(z, zenithangle, o2, o3)
+    jhart, jsrc, jlya, j3, j2 = jfactors(np.zeros(len(m)), o2, o3, n2, z, zenithangle)
+    o = oxygen_atom(m, T, o3, j3)
+
+    qy_hart = 0.9 #quatumn yield
+    qy_lya = 0.44
+    qy_src = 0.9999 
+    eff_o1d_o2sig = 0.2 #efficiency 
+    eff_o1d_o2sig1 = 1-eff_o1d_o2sig
+#    eff_o2sig_o2delta = 1#0.75
+    
+    #quenching
+    def q_o2sig(n2, co2, o2, o, o3):
+        q_o2sig.k_n2 = 2.1e-15
+        q_o2sig.k_co2 = 4.2e-13
+        q_o2sig.k_o3 = 2.2e-11
+        q_o2sig.k_o = 8e-14
+        q_o2sig.k_o2 = 3.9e-17
+        return q_o2sig.k_n2*n2 + q_o2sig.k_co2*co2 + q_o2sig.k_o3*o3 + q_o2sig.k_o*o + q_o2sig.k_o2*o2
+    
+    def q_o2delta(T, o2, n2, o):
+        k_o2 = 3.6e-18*np.exp(-220/T)
+        k_n2 = 1.4e-19#1e-20
+        k_o = 1.3e-16
+        return k_o2*o2 + k_n2*n2 + k_o*o
+    
+    def q_o1d(T, n2, o2):
+        k_n2 = 2.15e-11*np.exp(110/T)#1.8e-11*np.exp(110/T)
+        q_o1d.k_o2 = 3.95e-11 # 3.12e-11*np.exp(55/T) #3.95e-11 #3.2e-11*np.exp(70/T)
+        return k_n2*n2 + q_o1d.k_o2*o2
+    
+    def q_o2sig1(T, o2, n2, o, o3):
+        q_o2sig1.k_n2 = 7e-13 #max
+        q_o2sig1.k_o2 = 2.2e-11*np.exp(-115/T)  #4.2e-11*np.exp(-312/T)
+        q_o2sig1.k_o = 4.5e-12
+        q_o2sig1.k_o3 = 3e-10 #max
+        return q_o2sig1.k_n2*n2 + q_o2sig1.k_o2*o2 + q_o2sig1.k_o*o + q_o2sig1.k_o3*o3
+
+    Q_o1d = q_o1d(T, n2, o2)
+    Q_o2delta = q_o2delta(T, o2, n2, o)
+    Q_o2sig = q_o2sig(n2, co2, o2, o, o3)
+    Q_o2sig1 = q_o2sig1(T, o2, n2, o, o3)
+    
+    A_o2sig = 7.58e-2
+    A_o2delta = 2.23e-4 # 2.58e-4
+    A_o1d = 0 #6.81e-3 #from donal's code? 
+    A_o2sig1 = 7e-2
+    
+    # o(1d) reactions ===========
+    prod_o1d_from_o2 = o2 * (qy_src * jsrc + qy_lya * jlya)
+    prod_o1d_from_o3 = qy_hart * o3 * jhart
+    prod_o1d = prod_o1d_from_o3 + prod_o1d_from_o2
+    f_1d_o3 = prod_o1d_from_o3 / prod_o1d
+    f_1d_o2 = prod_o1d_from_o2 / prod_o1d
+    
+    loss_o1d = Q_o1d + A_o1d
+    o1d = prod_o1d / loss_o1d
+    
+    # o2(sig v=1) reactions ============
+#    k_o1d_o2 = 3.95e-11 #3.2e-11*np.exp(70/T) #
+    prod_o2sig1_from_gB = gB(p, zenithangle) * o2
+    prod_o2sig1_from_o1d = eff_o1d_o2sig1 * q_o1d.k_o2 * o2 * o1d
+    prod_o2sig1 = prod_o2sig1_from_gB + prod_o2sig1_from_o1d
+    f_o2sig1_gB = prod_o2sig1_from_gB / prod_o2sig1
+    f_o2sig1_1d = prod_o2sig1_from_o1d / prod_o2sig1
+    
+    loss_o2sig1 = Q_o2sig1 + A_o2sig1
+    o2sig1 = prod_o2sig1/loss_o2sig1
+    
+    # o2(sig v=0) reactions ======================
+    k_o_o = 4.7e-33*(300/T)
+    c_o2 = 6.6 #empirical quenchin coefficient
+    c_o = 19 #empirical quenchin coefficient
+    
+    prod_o2sig_from_barth = k_o_o * o**2 * m * o2 / (c_o2*o2 + c_o*o)
+    prod_o2sig_from_o1d = eff_o1d_o2sig * q_o1d.k_o2 * o2 * o1d
+    prod_o2sig_from_gA = gA(p, zenithangle) * o2
+    prod_o2sig_from_o2sig1 = (q_o2sig1.k_o2*o2 + q_o2sig1.k_n2*n2) * o2sig1
+    prod_o2sig = prod_o2sig_from_o1d + prod_o2sig_from_gA + prod_o2sig_from_barth + prod_o2sig_from_o2sig1
+    f_o2sig_1d = prod_o2sig_from_o1d / prod_o2sig
+    f_o2sig_gA = prod_o2sig_from_gA / prod_o2sig
+    f_o2sig_barth = prod_o2sig_from_barth / prod_o2sig
+    f_o2sig_o2sig1 = prod_o2sig_from_o2sig1 / prod_o2sig
+    
+    loss_o2sig = Q_o2sig + A_o2sig
+    o2sig = prod_o2sig / loss_o2sig
+    
+    # o2(delta) reactions =========================
+    prod_o2delta_from_o3 = qy_hart * o3 * jhart
+#    prod_o2delta_from_o2sig =  eff_o2sig_o2delta * Q_o2sig * o2sig
+    prod_o2delta_from_o2sig = (0.75*q_o2sig.k_o*o + 1*q_o2sig.k_o2*o2 
+                               + 0.3*q_o2sig.k_o3*o3 + 0.5*q_o2sig.k_n2*n2 
+                               + 0.95*q_o2sig.k_co2*co2) * o2sig
+    prod_o2delta_from_gIRA = gIRA(p, zenithangle) * o2
+    prod_o2delta = prod_o2delta_from_o3 + prod_o2delta_from_o2sig + prod_o2delta_from_gIRA
+    f_o2delta_o3 = prod_o2delta_from_o3 / prod_o2delta
+    f_o2delta_o2sig = prod_o2delta_from_o2sig / prod_o2delta
+    f_o2delta_gIRA = prod_o2delta_from_gIRA / prod_o2delta
+    
+    loss_o2delta = Q_o2delta + A_o2delta
+    o2delta = prod_o2delta/loss_o2delta
+    
+    f_barth = f_o2delta_o2sig*f_o2sig_barth
+    f_gA = f_o2delta_o2sig*f_o2sig_gA
+    f_o3 = f_o2delta_o2sig*(f_o2sig_1d + f_o2sig_o2sig1*f_o2sig1_1d)*f_1d_o3 + f_o2delta_o3
+    f_o2 = f_o2delta_o2sig*(f_o2sig_1d + f_o2sig_o2sig1*f_o2sig1_1d)*f_1d_o2
+    f_gIRA = f_o2delta_gIRA
+    f_gB = f_o2delta_o2sig*f_o2sig_o2sig1*f_o2sig1_gB
+#    print(f_barth+f_gA+f_o3+f_o2+f_gIRA+f_gB)
+#    print(max(f_gIRA[70:80])*100, max(f_gB[70:80])*100)
+    return [o2delta, f_o3, f_o2, f_gA, f_gB, f_gIRA, f_barth]
+
 #%% 
-if __name__ == '__main__':    
-#    path = '/home/anqil/Documents/Python/iris/old_files/'
-#    file = 'apriori_temp.nc'
-#    ds = xr.open_dataset(path+file)
-#    o3 = ds.o3_vmr.values * ds.m.values
-    file = '/home/anqil/Documents/osiris_database/ex_data/msis_cmam_climatology.nc'
-    ds = xr.open_dataset(file).interp(month=1, lat=13.5)
-    m = (ds.o2+ds.n2+ds.o) * 1e-6 #cm-3
-    o3 = ds.o3_vmr.interp(lst_bins=6.876)* m #cm-3
-    sza = [30, 60, 85, 89.9]
-    
-    fig, ax = plt.subplots(nrows=1, ncols=2, sharey=True, figsize=(15,5))
-    ls = ['-', ':', '--', '-.'] 
- 
-    aaa = []
-    for i in range(len(sza)):
-#        result = cal_o2delta(o3, ds.T.values, ds.m.values, ds.altgrid.values*1e3, sza[i])
-        result = cal_o2delta(o3.values, ds.T.values, m.values, 
-                             ds.z.values*1e3, sza[i], gA(ds.p, sza[i]))
-        aaa.append(result)
-          
+#if __name__ == '__main__':    
+##    path = '/home/anqil/Documents/Python/iris/old_files/'
+##    file = 'apriori_temp.nc'
+##    ds = xr.open_dataset(path+file)
+##    o3 = ds.o3_vmr.values * ds.m.values
+#    file = '/home/anqil/Documents/osiris_database/ex_data/msis_cmam_climatology_200.nc'
+#    ds = xr.open_dataset(file).interp(month=1, lat=13.5)
+#    m = (ds.o2+ds.n2+ds.o) * 1e-6 #cm-3
+#    o3 = ds.o3_vmr.interp(lst=6.876)* m #cm-3
+#    sza = [30, 60, 85, 89.9]
+#    
+#    fig, ax = plt.subplots(nrows=1, ncols=2, sharey=True, figsize=(15,5))
+#    ls = ['-', ':', '--', '-.'] 
+# 
+#    aaa = []
 #    for i in range(len(sza)):
-#        result = aaa[i]
-        ax[0].plot(result[1]*100, ds.z, ls=ls[i], color='C0', label='Barth {}'.format(sza[i]))
-        ax[0].plot(result[2]*100, ds.z, ls=ls[i], color='C1', label='gA {}'.format(sza[i]))
-        ax[0].plot(result[3]*100, ds.z, ls=ls[i], color='C2', label='O3 {}'.format(sza[i]))
-        ax[0].plot(result[4]*100, ds.z, ls=ls[i], color='C3', label='O2 {}'.format(sza[i]))
+##        result = cal_o2delta(o3, ds.T.values, ds.m.values, ds.altgrid.values*1e3, sza[i])
+##        result = cal_o2delta(o3.values, ds.T.values, m.values, 
+##                             ds.z.values*1e3, sza[i], gA(ds.p, sza[i]))
+#        result = cal_o2delta_new(o3.values, ds.T.values, m.values, 
+#                             ds.z.values*1e3, sza[i], ds.p.values)
+#        aaa.append(result)
+#          
+##    for i in range(len(sza)):
+##        result = aaa[i]
+#        ax[0].plot(result[1]*100, ds.z, ls=ls[i], color='C0')
+#        ax[0].plot(result[2]*100, ds.z, ls=ls[i], color='C1')
+#        ax[0].plot(result[3]*100, ds.z, ls=ls[i], color='C2')
+#        ax[0].plot(result[4]*100, ds.z, ls=ls[i], color='C3')
+#        ax[0].plot(result[5]*100, ds.z, ls=ls[i], color='C4')
+#        ax[0].plot(result[6]*100, ds.z, ls=ls[i], color='C5')
+#    
+#        ax[1].plot(result[1]*result[0], ds.z, ls=ls[i], color='C0')
+#        ax[1].plot(result[2]*result[0], ds.z, ls=ls[i], color='C1')
+#        ax[1].plot(result[3]*result[0], ds.z, ls=ls[i], color='C2')
+#        ax[1].plot(result[4]*result[0], ds.z, ls=ls[i], color='C3')
+#        ax[1].plot(result[5]*result[0], ds.z, ls=ls[i], color='C4')
+#        ax[1].plot(result[6]*result[0], ds.z, ls=ls[i], color='C5')
+##        ax[1].plot(result[0], ds.z, ls=ls[i], color='k', label='Total {}'.format(sza[i]))
+#        
+#    plt.legend(['$O_3$', '$O_2$', '$g_A$',  '$g_B$', '$g_{IRA}$', 'Barth'])    
+#    ax[0].set(xlabel = 'Percentage',
+#              ylabel = 'Altitude / km')#,
+##              title = 'contribution to singlet delta,\n sza={}'.format(sza))
+#    ax[1].set(xlabel = 'Concentration / $cm^{-3}$',
+##              ylabel = 'z',
+##              title = 'contribution to singlet delta,\n sza={}'.format(sza),
+#              xlim = (1e-5, 1e11),
+#              ylim = (60, 100))
+#    ax[1].set_xscale('log')
+#    plt.rcParams.update({'font.size': 14})
+#    plt.savefig('/home/anqil/Documents/reportFigure/article2/contributions.png')
     
-        ax[1].plot(result[1]*result[0], ds.z, ls=ls[i], color='C0', label='Barth {}'.format(sza[i]))
-        ax[1].plot(result[2]*result[0], ds.z, ls=ls[i], color='C1', label='gA {}'.format(sza[i]))
-        ax[1].plot(result[3]*result[0], ds.z, ls=ls[i], color='C2', label='O3 {}'.format(sza[i]))
-        ax[1].plot(result[4]*result[0], ds.z, ls=ls[i], color='C3', label='O2 {}'.format(sza[i]))
-#        ax[1].plot(result[0], ds.z, ls=ls[i], color='C4', label='Total {}'.format(sza[i]))
-        
-    plt.legend()    
-    ax[0].set(xlabel = '%',
-              ylabel = 'z',
-              title = 'contribution to singlet delta, sza={}'.format(sza))
-    ax[1].set(xlabel = 'concentration',
-              ylabel = 'z',
-              title = 'contribution to singlet delta, sza={}'.format(sza),
-              xlim = (1e-5, 1e11),
-              ylim = (60, 150))
-    ax[1].set_xscale('log')
-    
+#%% test test test ! 
+#if __name__ == '__main__':    
+#    path = '/home/anqil/Desktop/'
+#    #file = 'problem_o3.nc'
+#    file = 'test_no_mr_bound.nc'
+#    #file = 'test_with_mr_bound.nc'
+#    ds = xr.open_dataset(path+file)
+#    ds = ds.isel(mjd=1)
+#    # load climatology
+#    path = '/home/anqil/Documents/osiris_database/ex_data/'
+#    file = 'msis_cmam_climatology.nc'
+#    clima = xr.open_dataset(path+file)#.interp(z=z*1e-3)
+#    clima = clima.update({'m':(clima.o + clima.o2 + clima.n2)*1e-6}) #cm-3
+#    clima = clima.sel(month=8)
+#    o3_clima = clima.o3_vmr * clima.m #cm-3
+#    
+#    T_a = clima.T.interp(lat=ds.latitude, z=ds.z[ds.mr>0.8]*1e-3)
+#    m_a = clima.m.interp(lat=ds.latitude, z=ds.z[ds.mr>0.8]*1e-3)
+#    p_a = clima.p.interp(lat=ds.latitude, z=ds.z[ds.mr>0.8]*1e-3) 
+#    
+#    sol_zen = ds.sza.item()
+#    o2delta = cal_o2delta_new(ds.o3[ds.mr>0.8].data, T_a.data, m_a.data, ds.z[ds.mr>0.8],
+#                                            sol_zen, p_a.data)[0]
+#    A_o2delta = 2.23e-4
+#    o2delta_ver = o2delta * A_o2delta
+#    plt.figure()
+#    plt.semilogx(o2delta_ver, ds.z[ds.mr>0.8], '.', label='problem o3 VER')
+#    plt.semilogx(ds.ver, ds.z, '-')
+#    
+#    
+#    result = cal_o2delta_new(ds.o3[ds.mr>0.8].values, T_a.data, m_a.data, 
+#                             ds.z[ds.mr>0.8], sol_zen, p_a.data)
+#    fig, ax = plt.subplots(nrows=1, ncols=2, sharey=True, figsize=(15,5))
+#    ax[1].plot(result[1]*result[0], ds.z[ds.mr>0.8], color='C0')
+#    ax[1].plot(result[2]*result[0], ds.z[ds.mr>0.8], color='C1')
+#    ax[1].plot(result[3]*result[0], ds.z[ds.mr>0.8], color='C2')
+#    ax[1].plot(result[4]*result[0], ds.z[ds.mr>0.8], color='C3')
+#    ax[1].plot(result[5]*result[0], ds.z[ds.mr>0.8], color='C4')
+#    ax[1].plot(result[6]*result[0], ds.z[ds.mr>0.8], color='C5')
+#    # ax[1].plot(result[0], ds.z, ls=ls[i], color='k', label='Total {}'.format(sza[i]))
+#    ax[1].set(xlabel = 'Concentration / $cm^{-3}$',
+#              ylabel = 'z',
+#              title = 'contribution to singlet delta',
+#              xlim = (1e-5, 1e11),
+#              ylim = (60e3, 100e3))
+#    ax[1].set_xscale('log')
+#    plt.legend(['$O_3$', '$O_2$', '$g_A$',  '$g_B$', '$g_{IRA}$', 'Barth'])
+#    
