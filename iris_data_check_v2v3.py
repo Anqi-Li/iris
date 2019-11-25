@@ -15,8 +15,8 @@ from astropy.time import Time
 
 
 #%%
-year = [2008, 2008]
-month = [7, 8]
+year = [2008]
+month = [8]
 t_bounds = Time(['{}-{}-01T00:00:00'.format(year[0], str(month[0]).zfill(2)),
                '{}-{}-01T00:00:00'.format(year[-1], str(month[-1]+1).zfill(2))], 
                 format='isot', scale='utc')
@@ -54,7 +54,7 @@ o3_iris = data_iris.o3_iris.where(data_iris.mr>0.8)
 #%% load new (v3) iris data
 #new calibration,new o3 apriori new kinetic coefficients, new TOA altitude, added B-band and IRA-band
 path = '/home/anqil/Documents/osiris_database/iris_ver_o3/'
-filenames = 'ver_o3_{}{}_new2_log.nc'
+filenames = 'ver_o3_{}{}_0bound_forloop.nc'
 files = [path+filenames.format(year[i], str(month[i]).zfill(2)) for i in range(len(month))]
 
 data_iris_new = xr.open_mfdataset(files)
@@ -63,7 +63,7 @@ data_iris_new = data_iris_new.assign_coords(latitude = data_iris_new.latitude,
                                             longitude = data_iris_new.longitude)
 
 
-#%%
+#%% check if their mjd align roughly
 plt.figure()
 data_iris_new.mjd.plot(ls='', marker='.', label='new')
 data_iris.mjd.plot(ls='', marker='.', label='old')
@@ -89,7 +89,10 @@ plt.show()
 lat_bins = np.linspace(-90, 90, 46, endpoint=True)
 lat_bins_center = np.diff(lat_bins)/2+lat_bins[:-1]
 
-mean_new = data_iris_new.o3.where(data_iris_new.mr>0.8).groupby_bins('latitude', lat_bins, 
+mean_new = data_iris_new.o3.where(
+#        abs(data_iris_new.lsq_residual)<1e1).where(
+        data_iris_new.mr>0.8).groupby_bins(
+                        'latitude', lat_bins, 
                                  labels=lat_bins_center).mean(dim='mjd')
 mean_old = data_iris.o3_iris.where(data_iris.mr>0.8).groupby_bins('latitude', lat_bins, 
                                   labels=lat_bins_center).mean(dim='mjd')
@@ -145,11 +148,13 @@ counts_old.plot.step()
 #%% check profiles that are at latitude higher than 50
 plt.figure()
 data_iris_new.o3.where(data_iris_new.mr>0.8).where(
-        abs(data_iris_new.o3_residual)<1e6).where(
-                data_iris_new.latitude>50,drop=True).isel(
+#                abs(data_iris_new.lsq_residual)<1e3).where(
+                data_iris_new.latitude>-70).where(
+                data_iris_new.latitude<-30).isel(
         mjd=slice(0,10000,100)).plot.line(
                 y='z', ls='-', marker='.', add_legend=False, xscale='log')
-plt.show()
+#plt.show()
+plt.xlim([1e6, 1e12])
 
 #%%
 ##find out which profiles are not normal --> mjd

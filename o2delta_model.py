@@ -424,7 +424,7 @@ def photolysis (z,sol_zen,o2,o3):
     return np.array(Jhart), np.array(Jsrc), np.array(Jlya), np.array(J3)
 
 #%%
-def jfactors(O, O2, O3, N2, z, zenithangle):
+def jfactors(o, o2, o3, n2, z, zenithangle):
     from scipy.io import loadmat
     def pathleng(heights, Xi):
         # inputs: 
@@ -455,10 +455,10 @@ def jfactors(O, O2, O3, N2, z, zenithangle):
         nheights=nheights-1
         return pathl    
 
-    O = O[None,:]
-    O2 = O2[None,:]
-    O3 = O3[None,:]
-    N2 = N2[None,:]
+    O = o[None,:]
+    O2 = o2[None,:]
+    O3 = o3[None,:]
+    N2 = n2[None,:]
 
     path = '/home/anqil/Documents/osiris_database/ex_data/'
     sigma = loadmat(path+'sigma.mat')
@@ -503,89 +503,90 @@ def oxygen_atom(m, T, o3, j3):
 
 
 #%%
-def cal_o2delta(o3, T, m, z, zenithangle, gA):
-    # z unit should be in m
-    # concentration units should be in cm-3
-#    o3[o3<0] = 0
-    o2 = 0.21 * m 
-    n2 = 0.78 * m 
-    co2 = 405e-6*m 
-    
-    
-#    jhart, jsrc, jlya, j3 = photolysis(z, zenithangle, o2, o3)
-    jhart, jsrc, jlya, j3, j2 = jfactors(np.zeros(len(m)), o2, o3, n2, z, zenithangle)
-    o = oxygen_atom(m, T, o3, j3)
-
-    qy_hart = 0.9 #quatumn yield
-    qy_lya = 0.44
-    qy_src = 0.9999 
-    eff_o1d_o2sig = 0.77 #efficiency 
-    
-    #quenching
-    def q_o2sig(n2, co2, o2, o, o3):
-        k_n2 = 2.1e-15
-        k_co2 = 4.2e-13
-        k_o3 = 2.2e-11
-        k_o = 8e-14
-        k_o2 = 3.9e-17
-        return n2*k_n2 + co2*k_co2 + o3*k_o3 + o*k_o + o2*k_o2
-    
-    def q_o2delta(T, o2, n2, o):
-        k_o2 = 3.6e-18*np.exp(-220/T)
-        k_n2 = 1e-20
-        k_o = 1.3e-16
-        return k_o2*o2 + k_n2*n2 + k_o*o
-    
-    def q_o1d(T, n2, o2):
-        k_n2 = 1.8e-11*np.exp(110/T)
-        k_o2 = 3.2e-11*np.exp(70/T)
-        return k_n2*n2 + k_o2*o2
-
-    Q_o1d = q_o1d(T, n2, o2)
-    Q_o2delta = q_o2delta(T, o2, n2, o)
-    Q_o2sig = q_o2sig(n2, co2, o2, o, o3)
-    
-    A_o2sig = 0.0758
-    A_o2delta = 2.23e-4 # 2.58e-4
-    A_o1d = 0 #6.81e-3 #from donal's code? 
-    
-    prod_o1d_from_o2 = o2 * (qy_src * jsrc + qy_lya * jlya)
-    prod_o1d_from_o3 = qy_hart * o3 * jhart
-    prod_o1d = prod_o1d_from_o3 + prod_o1d_from_o2
-    f_1d_o3 = prod_o1d_from_o3 / prod_o1d
-    f_1d_o2 = prod_o1d_from_o2 / prod_o1d
-    
-    loss_o1d = Q_o1d + A_o1d
-    o1d = prod_o1d / loss_o1d
-    
-    k_o_o = 4.7e-33*(300/T)
-    c_o2 = 6.6 #empirical quenchin coefficient
-    c_o = 19 #empirical quenchin coefficient
-    k_o1d_o2 = 3.2e-11*np.exp(70/T) 
-    prod_o2sig_barth = k_o_o * o**2 * m * o2 / (c_o2*o2 + c_o*o)
-    prod_o2sig = eff_o1d_o2sig * k_o1d_o2 * o2 * o1d + gA * o2 + prod_o2sig_barth
-    f_o2sig_1d = eff_o1d_o2sig * k_o1d_o2 * o2 * o1d / prod_o2sig
-    f_o2sig_gA = gA * o2 / prod_o2sig
-    f_o2sig_barth = prod_o2sig_barth / prod_o2sig
-    
-    loss_o2sig = Q_o2sig + A_o2sig
-    o2sig = prod_o2sig / loss_o2sig
-    
-    prod_o2delta_from_o3 = qy_hart * o3 * jhart
-    prod_o2delta_from_o2sig = Q_o2sig * o2sig
-    prod_o2delta = prod_o2delta_from_o3 + prod_o2delta_from_o2sig
-    f_o2delta_o3 = prod_o2delta_from_o3 / prod_o2delta
-    f_o2delta_o2sig = prod_o2delta_from_o2sig / prod_o2delta
-    
-    loss_o2delta = Q_o2delta + A_o2delta
-    o2delta = prod_o2delta/loss_o2delta
-    
-    return o2delta, f_o2delta_o2sig*f_o2sig_barth, f_o2delta_o2sig*f_o2sig_gA, f_o2delta_o2sig*f_o2sig_1d*f_1d_o3 + f_o2delta_o3, f_o2delta_o2sig*f_o2sig_1d*f_1d_o2
+#def cal_o2delta(o3, T, m, z, zenithangle, gA):
+#    # z unit should be in m
+#    # concentration units should be in cm-3
+##    o3[o3<0] = 0
+#    o2 = 0.21 * m 
+#    n2 = 0.78 * m 
+#    co2 = 405e-6*m 
+#    
+#    
+##    jhart, jsrc, jlya, j3 = photolysis(z, zenithangle, o2, o3)
+#    jhart, jsrc, jlya, j3, j2 = jfactors(np.zeros(len(m)), o2, o3, n2, z, zenithangle)
+#    o = oxygen_atom(m, T, o3, j3)
+#
+#    qy_hart = 0.9 #quatumn yield
+#    qy_lya = 0.44
+#    qy_src = 0.9999 
+#    eff_o1d_o2sig = 0.77 #efficiency 
+#    
+#    #quenching
+#    def q_o2sig(n2, co2, o2, o, o3):
+#        k_n2 = 2.1e-15
+#        k_co2 = 4.2e-13
+#        k_o3 = 2.2e-11
+#        k_o = 8e-14
+#        k_o2 = 3.9e-17
+#        return n2*k_n2 + co2*k_co2 + o3*k_o3 + o*k_o + o2*k_o2
+#    
+#    def q_o2delta(T, o2, n2, o):
+#        k_o2 = 3.6e-18*np.exp(-220/T)
+#        k_n2 = 1e-20
+#        k_o = 1.3e-16
+#        return k_o2*o2 + k_n2*n2 + k_o*o
+#    
+#    def q_o1d(T, n2, o2):
+#        k_n2 = 1.8e-11*np.exp(110/T)
+#        k_o2 = 3.2e-11*np.exp(70/T)
+#        return k_n2*n2 + k_o2*o2
+#
+#    Q_o1d = q_o1d(T, n2, o2)
+#    Q_o2delta = q_o2delta(T, o2, n2, o)
+#    Q_o2sig = q_o2sig(n2, co2, o2, o, o3)
+#    
+#    A_o2sig = 0.0758
+#    A_o2delta = 2.23e-4 # 2.58e-4
+#    A_o1d = 0 #6.81e-3 #from donal's code? 
+#    
+#    prod_o1d_from_o2 = o2 * (qy_src * jsrc + qy_lya * jlya)
+#    prod_o1d_from_o3 = qy_hart * o3 * jhart
+#    prod_o1d = prod_o1d_from_o3 + prod_o1d_from_o2
+#    f_1d_o3 = prod_o1d_from_o3 / prod_o1d
+#    f_1d_o2 = prod_o1d_from_o2 / prod_o1d
+#    
+#    loss_o1d = Q_o1d + A_o1d
+#    o1d = prod_o1d / loss_o1d
+#    
+#    k_o_o = 4.7e-33*(300/T)
+#    c_o2 = 6.6 #empirical quenchin coefficient
+#    c_o = 19 #empirical quenchin coefficient
+#    k_o1d_o2 = 3.2e-11*np.exp(70/T) 
+#    prod_o2sig_barth = k_o_o * o**2 * m * o2 / (c_o2*o2 + c_o*o)
+#    prod_o2sig = eff_o1d_o2sig * k_o1d_o2 * o2 * o1d + gA * o2 + prod_o2sig_barth
+#    f_o2sig_1d = eff_o1d_o2sig * k_o1d_o2 * o2 * o1d / prod_o2sig
+#    f_o2sig_gA = gA * o2 / prod_o2sig
+#    f_o2sig_barth = prod_o2sig_barth / prod_o2sig
+#    
+#    loss_o2sig = Q_o2sig + A_o2sig
+#    o2sig = prod_o2sig / loss_o2sig
+#    
+#    prod_o2delta_from_o3 = qy_hart * o3 * jhart
+#    prod_o2delta_from_o2sig = Q_o2sig * o2sig
+#    prod_o2delta = prod_o2delta_from_o3 + prod_o2delta_from_o2sig
+#    f_o2delta_o3 = prod_o2delta_from_o3 / prod_o2delta
+#    f_o2delta_o2sig = prod_o2delta_from_o2sig / prod_o2delta
+#    
+#    loss_o2delta = Q_o2delta + A_o2delta
+#    o2delta = prod_o2delta/loss_o2delta
+#    
+#    return o2delta, f_o2delta_o2sig*f_o2sig_barth, f_o2delta_o2sig*f_o2sig_gA, f_o2delta_o2sig*f_o2sig_1d*f_1d_o3 + f_o2delta_o3, f_o2delta_o2sig*f_o2sig_1d*f_1d_o2
 
 #%%
-def cal_o2delta_new(o3, T, m, z, zenithangle, p):
+def cal_o2delta_new(o3_in, T, m, z, zenithangle, p):
     # z unit should be in m
     # concentration units should be in cm-3
+    o3 = o3_in.copy()
     o3[o3<0] = 1e-8
     o2 = 0.21 * m 
     n2 = 0.78 * m 
