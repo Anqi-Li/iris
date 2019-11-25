@@ -75,56 +75,10 @@ def pathl1d_iris(h, z=np.arange(40e3, 110e3, 1e3), z_top=150e3):
     return pathl 
 
 
-
-#%% Global variables
-A_o2delta = 2.23e-4
-fr = 0.72 # filter fraction 
-normalize = np.pi*4 / fr
-# define oem inversion grid
-#====drop data below and above some altitudes
-bot = 60e3
-top = 102e3
-top_extra = 149e3 # for apriori, cal_o2delta (J and g)
-#====retireval grid
-z = np.arange(bot, top, 1e3) # m
-z = np.append(z, top_extra)
-z_top = z[-1] + 1e3 # for jacobian
-
-#%%
-year = [2008, 2008]
-month = [8, 9]
-t_bounds = Time(['{}-{}-01T00:00:00'.format(year[0], str(month[0]).zfill(2)),
-               '{}-{}-01T00:00:00'.format(year[1], str(month[1]).zfill(2))], 
-                format='isot', scale='utc')
-#remote_file = 'https://arggit.usask.ca/opendap/ir_stray_light_corrected.nc'
-file = '/home/anqil/Documents/osiris_database/ir_stray_light_corrected.nc'
-ir = xr.open_dataset(file)
-mjd_lst = ir.mjd[np.logical_and(ir.mjd>=t_bounds.mjd[0], ir.mjd<t_bounds.mjd[1])]
-ir = ir.sel(mjd=mjd_lst)
-day_mjd_lst = ir.mjd[ir.sza<90]
-ir = ir.sel(mjd=day_mjd_lst)
-altitude = ir.altitude.sel(pixel=slice(14, 128))
-latitude = ir.latitude
-longitude = ir.longitude
-sza = ir.sza
-lst = ir.apparent_solar_time.sel(pixel=60).drop('pixel')
-l1 = ir.sel(pixel=slice(14, 128)).data
-error = ir.sel(pixel=slice(14, 128)).error
-
-#quater = round(len(day_mjd_lst)/4) #temperary
-#q = 4
-
-#%% load climatology
-path = '/home/anqil/Documents/osiris_database/ex_data/'
-file = 'msis_cmam_climatology.nc'
-clima = xr.open_dataset(path+file)#.interp(z=z*1e-3)
-clima = clima.update({'m':(clima.o + clima.o2 + clima.n2)*1e-6}) #cm-3
-clima = clima.sel(month=month[0])
-o3_clima = clima.o3_vmr * clima.m #cm-3
-
 #%%
 def residual(o3, T, m, z, zenithangle, p, o2delta_meas):
     o2delta_model = cal_o2delta_new(o3, T, m, z, zenithangle, p)[0] 
+#    print(id(o2delta_model))
 #    print(round(o3[30]*1e-6))
 #    plt.semilogx(o3, z) #temp
 #    plt.show()
@@ -165,7 +119,7 @@ def f(i):
                 h = altitude.isel(mjd=i).where(l1.isel(mjd=i).notnull(), drop=True
                                   ).where(alt_chop_cond, drop=True)
                 K = pathl1d_iris(h, z, z_top) * 1e2 # m-->cm    
-                y = l1.isel(mjd=i).sel(pixel=h.pixel).data * normalize
+                y = l1.isel(mjd=i).sel(pixel=h.pixel).data * normalize                
                 Se = np.diag((error.isel(mjd=i).sel(pixel=h.pixel).data * normalize)**2)
 #                Se = np.diag(np.ones(len(y))) *(1e11*normalize)**2
                 x, A, Ss, Sm = linear_oem(K, Se, Sa, y, xa)
@@ -174,11 +128,11 @@ def f(i):
                 cost_y = (y-y_fit).T.dot(np.linalg.inv(Se)).dot(y-y_fit)
                 mr = A.sum(axis=1)
                 y_fit = xr.DataArray(y_fit, coords={'pixel': h.pixel}, 
-                                     dims='pixel').reindex(pixel=l1.pixel)/normalize        
+                                     dims='pixel').reindex(pixel=l1.pixel)/normalize                     
 #                print('get ozone')
                 #lsq fit to get ozone
                 o2delta_meas = x / A_o2delta # cm-3
-#                o2delta_meas[o2delta_meas<0] = xa[o2delta_meas<0]/ A_o2delta / 1000    
+                o2delta_meas[o2delta_meas<0] = xa[o2delta_meas<0]/ A_o2delta / 1000    
 #                o2delta_meas[o2delta_meas<0] = 0
 
 #                res_lsq = least_squares(residual, 
@@ -227,22 +181,66 @@ def f(i):
 #        sys.stderr = sys.__stderr__
 
 
-    
 #%%
 if __name__ == '__main__': 
     
-#    index_lst = [2190,  2192, 2194, 3313]#, 9349, 10562, 10662, 21947]
+    #%% Global variables
+    A_o2delta = 2.23e-4
+    fr = 0.72 # filter fraction 
+    normalize = np.pi*4 / fr
+    # define oem inversion grid
+    #====drop data below and above some altitudes
+    bot = 60e3
+    top = 102e3
+    top_extra = 149e3 # for apriori, cal_o2delta (J and g)
+    #====retireval grid
+    z = np.arange(bot, top, 1e3) # m
+    z = np.append(z, top_extra)
+    z_top = z[-1] + 1e3 # for jacobian
+
+    #%%
+    year = [2008, 2008]
+    month = [8, 9]
+    t_bounds = Time(['{}-{}-01T00:00:00'.format(year[0], str(month[0]).zfill(2)),
+                   '{}-{}-01T00:00:00'.format(year[1], str(month[1]).zfill(2))], 
+                    format='isot', scale='utc')
+    #remote_file = 'https://arggit.usask.ca/opendap/ir_stray_light_corrected.nc'
+    file = '/home/anqil/Documents/osiris_database/ir_stray_light_corrected.nc'
+    ir = xr.open_dataset(file)
+    mjd_lst = ir.mjd[np.logical_and(ir.mjd>=t_bounds.mjd[0], ir.mjd<t_bounds.mjd[1])]
+    ir = ir.sel(mjd=mjd_lst)
+    day_mjd_lst = ir.mjd[ir.sza<90]
+    ir = ir.sel(mjd=day_mjd_lst)
+    altitude = ir.altitude.sel(pixel=slice(14, 128))
+    latitude = ir.latitude
+    longitude = ir.longitude
+    sza = ir.sza
+    lst = ir.apparent_solar_time.sel(pixel=60).drop('pixel')
+    l1 = ir.sel(pixel=slice(14, 128)).data
+    error = ir.sel(pixel=slice(14, 128)).error
+    
+    #%% load climatology
+    path = '/home/anqil/Documents/osiris_database/ex_data/'
+    file = 'msis_cmam_climatology.nc'
+    clima = xr.open_dataset(path+file)#.interp(z=z*1e-3)
+    clima = clima.update({'m':(clima.o + clima.o2 + clima.n2)*1e-6}) #cm-3
+    clima = clima.sel(month=month[0])
+    o3_clima = clima.o3_vmr * clima.m #cm-3
+
+    index_lst = [2190,  2192, 2194, 3313, 9349, 10562, 10662, 21947]
 #    index_lst =[9349, 10562, 10662, 21947]
 #    index_lst = list(range(4))
-    with Pool(processes=4) as pool:
-        result = pool.map(f, range(len(day_mjd_lst)))        
+#    with Pool(processes=4) as pool:
+##        result = pool.map(f, range(len(day_mjd_lst)))        
 #        result = pool.map(f, index_lst)
 
-    
-#    result = []
-#    for i in index_lst:#[9349]:#[2193,2194]:
-#        result.append(f(i))
+#    
+    result = []
+    for i in index_lst:#[9349]:#[2193,2194]:
+        result.append(f(i))
 
+#
+    
 # organize resulting arrays and save in nc file
     result = [i for i in result if i] # filter out all None element in list
     mjd = np.stack([result[i][6] for i in range(len(result))])
@@ -289,7 +287,7 @@ if __name__ == '__main__':
                                 '''}),
                      'nfev': (['mjd'], np.stack([result[i][8] for i in range(len(result))]),
                               {'long name': 'Number of function evaluations done.'}),
-                     'o3_residual':(['mjd','z'], np.stack([result[i][9] for i in range(len(result))])),
+                     'lsq_residual':(['mjd','z'], np.stack([result[i][9] for i in range(len(result))])),
                      'ver_smoothing':(['mjd','z'], np.stack([result[i][10] for i in range(len(result))])),
                      'limb_fit': limb_fit,
                      'cost_ver': (['mjd'], np.stack([result[i][12] for i in range(len(result))])),
@@ -298,73 +296,80 @@ if __name__ == '__main__':
                      
 
 #%% saveing to nc file
-    path = '/home/anqil/Documents/osiris_database/iris_ver_o3/'
-    ds.to_netcdf(path+'ver_o3_{}{}_new2_log_0bound.nc'.format(year[0], str(month[0]).zfill(2)))
+#    path = '/home/anqil/Documents/osiris_database/iris_ver_o3/'
+#    ds.to_netcdf(path+'ver_o3_{}{}_new2_log_0bound.nc'.format(year[0], str(month[0]).zfill(2)))
 
 #    path = '/home/anqil/Desktop/'
 #    ds.to_netcdf(path+'8_images_without_MR_filter.nc')
 
 #%%
+#    print('oem cost x: ', ds.cost_ver.data)
+#    print('oem cost y: ', ds.cost_limb.data)
+#    
+#%%
 
-#    alts_interp = np.arange(10e3, 150e3, .25e3)
-#    data_interp = []
-#    for (data, alt) in zip(ir.data.isel(mjd=index_lst), ir.altitude.isel(mjd=index_lst)):
-#        f_int = interp1d(alt, data, bounds_error=False)
-#        data_interp.append(f_int(alts_interp))
-#    data_interp = xr.DataArray(data_interp, coords=[ir.mjd.isel(mjd=index_lst), 
-#                                                    alts_interp], dims=['mjd', 'z'])
+    alts_interp = np.arange(10e3, 150e3, .25e3)
+    data_interp = []
+    for (data, alt) in zip(ir.data.isel(mjd=index_lst), ir.altitude.isel(mjd=index_lst)):
+        f_int = interp1d(alt, data, bounds_error=False)
+        data_interp.append(f_int(alts_interp))
+    data_interp = xr.DataArray(data_interp, coords=[ir.mjd.isel(mjd=index_lst), 
+                                                    alts_interp], dims=['mjd', 'z'])
     
-#    fit_interp = []
-#    for (data, alt) in zip(ds.limb_fit, ir.altitude.sel(mjd=ds.mjd, pixel=slice(14,128))):
-#        f_int = interp1d(alt, data, bounds_error=False)
-#        fit_interp.append(f_int(alts_interp))
-#    fit_interp = xr.DataArray(fit_interp, coords=[ds.mjd, alts_interp], 
-#                              dims=['mjd', 'z'])
+    fit_interp = []
+    for (data, alt) in zip(ds.limb_fit, ir.altitude.sel(mjd=ds.mjd, pixel=slice(14,128))):
+        f_int = interp1d(alt, data, bounds_error=False)
+        fit_interp.append(f_int(alts_interp))
+    fit_interp = xr.DataArray(fit_interp, coords=[ds.mjd, alts_interp], 
+                              dims=['mjd', 'z'])
     
 
     
 #%% plotting things
-#    plt.rcParams.update({'font.size': 20, 'figure.figsize': (12,6)})
-#    figdir = '/home/anqil/Desktop/'
-#    mjd_index_lst = ir.mjd[index_lst]
+    plt.rcParams.update({'font.size': 20, 'figure.figsize': (12,6)})
+    figdir = '/home/anqil/Desktop/'
+    mjd_index_lst = ir.mjd[index_lst]
     
-#    fig = plt.figure()
-##    data_interp.plot(y='z', robust=True, add_colorbar=False, norm=LogNorm(vmin=1e9, vmax=1e13), cmap='viridis')
-#    data_interp.plot.line(y='z', add_legend=False, color='k')
-#    fit_interp.plot.line(y='z', add_legend=True, ls='', marker='.')#, color='k')
-#    plt.ylim([60e3, 100e3])
-#    plt.title('fitted and original(k) limb profiles')
+    fig = plt.figure()
+#    data_interp.plot(y='z', robust=True, add_colorbar=False, norm=LogNorm(vmin=1e9, vmax=1e13), cmap='viridis')
+    data_interp.plot.line(y='z', add_legend=False, color='k')
+    fit_interp.plot.line(y='z', add_legend=True, ls='', marker='.')#, color='k')
+    plt.ylim([60e3, 100e3])
+    plt.title('fitted and original(k) limb profiles in z space')
 #    fig.savefig(figdir+'limb_z.png')
 
-#    fig = plt.figure()
-#    ir.data.sel(mjd=mjd_index_lst).plot.line(y='pixel', color='k', add_legend=False)
-#    ds.limb_fit.plot.line(y='pixel',  marker='.', ls='', xscale='log')#, color='k')
-#    plt.title('fitted and original (k) limb profiles')
+    fig = plt.figure()
+    ir.data.sel(mjd=mjd_index_lst).plot.line(y='pixel', color='k', add_legend=False)
+    ds.limb_fit.plot.line(y='pixel',  marker='.', ls='', xscale='linear')#, color='k')
+    plt.title('fitted and original (k) limb profiles in pixel space')
 #    fig.savefig(figdir+'limb_pixel.png')
 
-#    o2delta_meas = ds.ver / A_o2delta
-#    o2delta_model = o2delta_meas - ds.o3_residual
-#    fig = plt.figure()
-#    o2delta_meas.plot.line(y='z', add_legend=False, color='k', xscale='log')
-#    o2delta_model.plot.line(y='z', xscale='log', ls='', marker='.')
-#    plt.title('o2delta_measured (VER/A, k) vs o2delta_modeled (measured - residual)')
+    measured_o2 = ds.ver / A_o2delta
+    fitted_o2 = measured_o2 - ds.lsq_residual
+    fig = plt.figure()
+    measured_o2.plot.line(y='z', add_legend=False, color='k', xscale='log')
+    fitted_o2.plot.line(y='z', xscale='log', ls='', marker='.')
+    plt.title('o2delta_measured (VER/A, k) vs o2delta_modeled (measured - residual)')
 #    fig.savefig(figdir+'o2delta.png')
-
-#    fig = plt.figure()
-#    ds.o3_residual.plot.line(y='z')
-#    plt.title('residual from non-linear fit')
-#    fig.savefig(figdir+'lsq_residual.png')
     
-#    fig = plt.figure()
-#    ds.o3_apriori.plot.line(y='z', add_legend=False, ls='-', xscale='log', color='k')
-#    ds.o3.plot.line(y='z', marker='.', ls='', xscale='log')
-#    plt.title('retrieved O3 vs apriori profiles')
-#    fig.savefig(figdir+'o3.png')
-    
-#    fig = plt.figure()
-#    ds.ver_apriori.plot.line(y='z', add_legend=False, ls='-', xscale='log', color='k')
-#    ds.ver.plot.line(y='z', marker='.', ls='', xscale='log')
-#    plt.title('retrieved VER vs apriori profiles')
+    fig = plt.figure()
+    ds.ver_apriori.plot.line(y='z', add_legend=False, ls='-', xscale='log', color='k')
+    ds.ver.plot.line(y='z', marker='.', ls='-', xscale='log')
+    plt.title('retrieved VER vs apriori profiles')
 #    fig.savefig(figdir+'ver.png')
 
-#    plt.show()
+    fig = plt.figure()
+    ds.o3_apriori.plot.line(y='z', add_legend=False, ls='-', xscale='log', color='k')
+    ds.o3.plot.line(y='z', marker='.', ls='-', xscale='log')
+    plt.title('retrieved O3 vs apriori profiles')
+#    fig.savefig(figdir+'o3.png')    
+
+    fig = plt.figure()
+    ds.lsq_residual.plot.line(y='z')
+    plt.title('residual from non-linear fit')
+#    fig.savefig(figdir+'lsq_residual.png')
+    
+
+
+    plt.show()
+    
