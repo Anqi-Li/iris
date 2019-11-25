@@ -135,7 +135,7 @@ def f(i):
 #                print('get ozone')
                 #lsq fit to get ozone
                 o2delta_meas = x / A_o2delta # cm-3
-                o2delta_meas[o2delta_meas<0] = xa[o2delta_meas<0]/ A_o2delta / 1000    
+#                o2delta_meas[o2delta_meas<0] = xa[o2delta_meas<0]/ A_o2delta / 1000    
 #                o2delta_meas[o2delta_meas<0] = 0
 
 #                res_lsq = least_squares(residual, 
@@ -154,7 +154,7 @@ def f(i):
                 res_lsq = least_squares(residual, 
                                         o3_a.values, #initial guess
 #                                        method='lm',
-                                        bounds=(0, np.inf), 
+#                                        bounds=(0, np.inf), 
                                         verbose=0, 
 #                                        max_nfev=3, #temp
                                         args=(T_a.values,
@@ -203,7 +203,7 @@ if __name__ == '__main__':
 
     #%%
     year = [2008, 2008]
-    month = [9, 10]
+    month = [7, 8]
     t_bounds = Time(['{}-{}-01T00:00:00'.format(year[0], str(month[0]).zfill(2)),
                    '{}-{}-01T00:00:00'.format(year[1], str(month[1]).zfill(2))], 
                     format='isot', scale='utc')
@@ -300,7 +300,7 @@ if __name__ == '__main__':
 
 #%% saveing to nc file
     path = '/home/anqil/Documents/osiris_database/iris_ver_o3/'
-    ds.to_netcdf(path+'ver_o3_{}{}_0bound_forloop.nc'.format(year[0], str(month[0]).zfill(2)))
+    ds.to_netcdf(path+'ver_o3_{}{}_nofilter_on_o2delta_meas_onlyfilter_on_o3copy.nc'.format(year[0], str(month[0]).zfill(2)))
 
 #    path = '/home/anqil/Desktop/'
 #    ds.to_netcdf(path+'8_images_without_MR_filter.nc')
