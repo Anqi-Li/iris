@@ -93,15 +93,18 @@ def f(i):
 
         alt_chop_cond = (altitude.isel(mjd=i)>bot) & (altitude.isel(mjd=i)<top) #select altitude range 
         if alt_chop_cond.sum() == 0:
-            print('wrong alt range ({})'.format(i))
+            print('wrong alt range ({}), month {}'.format(i, month[0]))
             pass
         elif l1.isel(mjd=i).notnull().sum() == 0:
-            print('l1 is all nan ({})'.format(i))
+            print('l1 is all nan ({}), month {}'.format(i, month[0]))
+            pass
+        elif error.isel(mjd=i).notnull().sum() == 0:
+            print('error is all nan ({}), month {}'.format(i, month[0]))
             pass
         
         else:
             try:
-                print(i, 'out of', len(day_mjd_lst))
+                print(i, 'out of', len(day_mjd_lst), 'in month ', month[0])
 #                print('get VER')
         
                 o3_a = o3_clima.interp(lst_bins=lst.isel(mjd=i),
@@ -199,8 +202,8 @@ if __name__ == '__main__':
     z_top = z[-1] + 1e3 # for jacobian
 
     #%%
-    year = [2007, 2007]
-    month = [11,12]
+    year = [2008, 2008]
+    month = [9, 10]
     t_bounds = Time(['{}-{}-01T00:00:00'.format(year[0], str(month[0]).zfill(2)),
                    '{}-{}-01T00:00:00'.format(year[1], str(month[1]).zfill(2))], 
                     format='isot', scale='utc')

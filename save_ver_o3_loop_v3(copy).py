@@ -200,7 +200,7 @@ if __name__ == '__main__':
 
     #%%
     year = [2008, 2008]
-    month = [8, 9]
+    month = [9, 10]
     t_bounds = Time(['{}-{}-01T00:00:00'.format(year[0], str(month[0]).zfill(2)),
                    '{}-{}-01T00:00:00'.format(year[1], str(month[1]).zfill(2))], 
                     format='isot', scale='utc')
@@ -211,6 +211,7 @@ if __name__ == '__main__':
     ir = ir.sel(mjd=mjd_lst)
     day_mjd_lst = ir.mjd[ir.sza<90]
     ir = ir.sel(mjd=day_mjd_lst)
+    print(ir.mjd.shape)
     altitude = ir.altitude.sel(pixel=slice(14, 128))
     latitude = ir.latitude
     longitude = ir.longitude
@@ -227,7 +228,7 @@ if __name__ == '__main__':
     clima = clima.sel(month=month[0])
     o3_clima = clima.o3_vmr * clima.m #cm-3
 
-    index_lst = [2190,  2192, 2194, 3313, 9349, 10562, 10662, 21947]
+#    index_lst = [2190,  2192, 2194, 3313, 9349, 10562, 10662, 21947]
 #    index_lst =[9349, 10562, 10662, 21947]
 #    index_lst = list(range(4))
 #    with Pool(processes=4) as pool:
@@ -236,7 +237,7 @@ if __name__ == '__main__':
 
 #    
     result = []
-    for i in index_lst:#[9349]:#[2193,2194]:
+    for i in [23082, 23083]:#[9349]:#[2193,2194]:
         result.append(f(i))
 
 #
