@@ -55,6 +55,7 @@ def pathl1d_iris(h, z=np.arange(40e3, 110e3, 1e3), z_top=150e3):
     #z: retrieval grid in meter
     #z_top: top of the atmosphere under consideration 
     #h: tangent altitude of line of sight
+    z = z.copy()
     if z[1]<z[0]:
         z = np.flip(z) # retrieval grid has to be ascending
         print('z has to be fliped')
@@ -93,10 +94,13 @@ def f(i):
 
         alt_chop_cond = (altitude.isel(mjd=i)>bot) & (altitude.isel(mjd=i)<top) #select altitude range 
         if alt_chop_cond.sum() == 0:
-            print('wrong alt range ({})'.format(i))
+            print('wrong alt range ({}), month {}'.format(i, month[0]))
             pass
         elif l1.isel(mjd=i).notnull().sum() == 0:
-            print('l1 is all nan ({})'.format(i))
+            print('l1 is all nan ({}), month {}'.format(i, month[0]))
+            pass
+        elif error.isel(mjd=i).notnull().sum() == 0:
+            print('error is all nan ({}), month {}'.format(i, month[0]))
             pass
         
         else:
@@ -104,7 +108,7 @@ def f(i):
                 print(i, 'out of', len(day_mjd_lst))
 #                print('get VER')
         
-                o3_a = o3_clima.interp(lst_bins=lst.isel(mjd=i),
+                o3_a = o3_clima.interp(lst=lst.isel(mjd=i),
                                        kwargs={'fill_value': 'extrapolate'}).interp(
                                                lat=latitude.isel(mjd=i), z=z*1e-3)
                 T_a = clima.T.interp(lat=latitude.isel(mjd=i), z=z*1e-3)
@@ -132,8 +136,8 @@ def f(i):
 #                print('get ozone')
                 #lsq fit to get ozone
                 o2delta_meas = x / A_o2delta # cm-3
-                o2delta_meas[o2delta_meas<0] = xa[o2delta_meas<0]/ A_o2delta / 1000    
-#                o2delta_meas[o2delta_meas<0] = 0
+#                o2delta_meas[o2delta_meas<0] = xa[o2delta_meas<0]/ A_o2delta / 1000    
+                o2delta_meas[o2delta_meas<0] = 0
 
 #                res_lsq = least_squares(residual, 
 #                                        o3_a.values[mr>0.8], #initial guess
@@ -147,7 +151,7 @@ def f(i):
 #                                              o2delta_meas[mr>0.8]))
 #                o3_iris = xr.DataArray(res_lsq.x, coords={'z': z[mr>0.8]}, dims='z').reindex(z=z).data
 #                resi = xr.DataArray(res_lsq.fun, coords={'z': z[mr>0.8]}, dims='z').reindex(z=z).data
-                
+#                
                 res_lsq = least_squares(residual, 
                                         o3_a.values, #initial guess
 #                                        method='lm',
@@ -200,7 +204,7 @@ if __name__ == '__main__':
 
     #%%
     year = [2008, 2008]
-    month = [9, 10]
+    month = [8, 9]
     t_bounds = Time(['{}-{}-01T00:00:00'.format(year[0], str(month[0]).zfill(2)),
                    '{}-{}-01T00:00:00'.format(year[1], str(month[1]).zfill(2))], 
                     format='isot', scale='utc')
@@ -222,14 +226,16 @@ if __name__ == '__main__':
     
     #%% load climatology
     path = '/home/anqil/Documents/osiris_database/ex_data/'
-    file = 'msis_cmam_climatology.nc'
+    file = 'msis_cmam_climatology_200.nc'
     clima = xr.open_dataset(path+file)#.interp(z=z*1e-3)
     clima = clima.update({'m':(clima.o + clima.o2 + clima.n2)*1e-6}) #cm-3
     clima = clima.sel(month=month[0])
     o3_clima = clima.o3_vmr * clima.m #cm-3
 
+#%%
 #    index_lst = [2190,  2192, 2194, 3313, 9349, 10562, 10662, 21947]
 #    index_lst =[9349, 10562, 10662, 21947]
+    index_lst = [251, 261, 8962, 13716, 24600]
 #    index_lst = list(range(4))
 #    with Pool(processes=4) as pool:
 ##        result = pool.map(f, range(len(day_mjd_lst)))        
@@ -237,7 +243,7 @@ if __name__ == '__main__':
 
 #    
     result = []
-    for i in [23082, 23083]:#[9349]:#[2193,2194]:
+    for i in index_lst: #[23082, 23083]:#[9349]:#[2193,2194]:
         result.append(f(i))
 
 #
@@ -324,10 +330,10 @@ if __name__ == '__main__':
     fit_interp = xr.DataArray(fit_interp, coords=[ds.mjd, alts_interp], 
                               dims=['mjd', 'z'])
     
-
+    oem_residual = (ir.isel(mjd=index_lst).data- ds.limb_fit)   
     
 #%% plotting things
-    plt.rcParams.update({'font.size': 20, 'figure.figsize': (12,6)})
+    plt.rcParams.update({'font.size': 13, 'figure.figsize': (6,3)})
     figdir = '/home/anqil/Desktop/'
     mjd_index_lst = ir.mjd[index_lst]
     
@@ -349,7 +355,7 @@ if __name__ == '__main__':
     fitted_o2 = measured_o2 - ds.lsq_residual
     fig = plt.figure()
     measured_o2.plot.line(y='z', add_legend=False, color='k', xscale='log')
-    fitted_o2.plot.line(y='z', xscale='log', ls='', marker='.')
+    fitted_o2.plot.line(y='z', xscale='log', ls='-', marker='.')
     plt.title('o2delta_measured (VER/A, k) vs o2delta_modeled (measured - residual)')
 #    fig.savefig(figdir+'o2delta.png')
     
@@ -368,6 +374,7 @@ if __name__ == '__main__':
     fig = plt.figure()
     ds.lsq_residual.plot.line(y='z')
     plt.title('residual from non-linear fit')
+#    plt.xlim([-1e-1, 1e-1])
 #    fig.savefig(figdir+'lsq_residual.png')
     
 
