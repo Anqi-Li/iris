@@ -85,7 +85,7 @@ def residual(o3, T, m, z, zenithangle, p, o2delta_meas):
 def f(i):
 
         alt_chop_cond = (altitude.isel(mjd=i)>bot) & (altitude.isel(mjd=i)<top) #select altitude range 
-        if alt_chop_cond.sum() == 0:
+        if alt_chop_cond.sum() < 2:
             print('wrong alt range ({}), month {}'.format(i, month[0]))
             pass
         elif l1.isel(mjd=i).notnull().sum() == 0:
@@ -164,7 +164,7 @@ def f(i):
             except:
                 print('something is wrong ({})'.format(i))
 
-                raise
+#                raise
                 pass
 
                 
@@ -173,7 +173,7 @@ if __name__ == '__main__':
     
     #%%
     year = [2008, 2008]
-    month = [8, 9]
+    month = [7,8]
     t_bounds = Time(['{}-{}-01T00:00:00'.format(year[0], str(month[0]).zfill(2)),
                    '{}-{}-01T00:00:00'.format(year[1], str(month[1]).zfill(2))], 
                     format='isot', scale='utc')
@@ -218,11 +218,12 @@ if __name__ == '__main__':
 #%%
 
     result = []
-    for i in range(2): #range(len(day_mjd_lst)): 
+    for i in range(len(day_mjd_lst)): 
         result.append(f(i))
     
 ##    index_lst = [251, 261, 8962, 13716, 24600]
 #    index_lst = [2190,  2192, 2194, 3313, 9349, 10562, 10662, 21947]
+#    index_lst = [56, 57]
 #    result = []
 #    for i in index_lst:
 #        result.append(f(i))
