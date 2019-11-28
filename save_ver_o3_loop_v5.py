@@ -172,8 +172,8 @@ def f(i):
 if __name__ == '__main__': 
     
     #%%
-    year = [2008, 2008]
-    month = [8, 9]
+    year = [2007, 2007]
+    month = [11,12]
     t_bounds = Time(['{}-{}-01T00:00:00'.format(year[0], str(month[0]).zfill(2)),
                    '{}-{}-01T00:00:00'.format(year[1], str(month[1]).zfill(2))], 
                     format='isot', scale='utc')
@@ -218,7 +218,7 @@ if __name__ == '__main__':
 #%%
 
     result = []
-    for i in range(2): #range(len(day_mjd_lst)): 
+    for i in range(len(day_mjd_lst)): 
         result.append(f(i))
     
 ##    index_lst = [251, 261, 8962, 13716, 24600]

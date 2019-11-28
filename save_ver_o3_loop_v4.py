@@ -136,34 +136,34 @@ def f(i):
                 #lsq fit to get ozone
                 o2delta_meas = x / A_o2delta # cm-3
 #                o2delta_meas[o2delta_meas<0] = xa[o2delta_meas<0]/ A_o2delta / 1000    
-#                o2delta_meas[o2delta_meas<0] = 0
+                o2delta_meas[o2delta_meas<0] = 0
 
-#                res_lsq = least_squares(residual, 
-#                                        o3_a.values[mr>0.8], #initial guess
-##                                        method='lm',
-#                                        bounds=(-np.inf, np.inf), verbose=0, 
-##                                        max_nfev=3, #temp
-#                                        args=(T_a.values[mr>0.8],
-#                                              m_a.values[mr>0.8],
-#                                              z[mr>0.8], sol_zen, 
-#                                              p_a.values[mr>0.8],
-#                                              o2delta_meas[mr>0.8]))
-#                o3_iris = xr.DataArray(res_lsq.x, coords={'z': z[mr>0.8]}, dims='z').reindex(z=z).data
-#                resi = xr.DataArray(res_lsq.fun, coords={'z': z[mr>0.8]}, dims='z').reindex(z=z).data
-                
                 res_lsq = least_squares(residual, 
-                                        o3_a.values, #initial guess
-#                                        method='lm',
+                                        o3_a.values[mr>0.8], #initial guess
+##                                        method='lm',
+                                        bounds=(-np.inf, np.inf), verbose=0, 
+##                                        max_nfev=3, #temp
+                                        args=(T_a.values[mr>0.8],
+                                              m_a.values[mr>0.8],
+                                              z[mr>0.8], sol_zen, 
+                                              p_a.values[mr>0.8],
+                                              o2delta_meas[mr>0.8]))
+                o3_iris = xr.DataArray(res_lsq.x, coords={'z': z[mr>0.8]}, dims='z').reindex(z=z).data
+                resi = xr.DataArray(res_lsq.fun, coords={'z': z[mr>0.8]}, dims='z').reindex(z=z).data
+                
+#                res_lsq = least_squares(residual, 
+#                                        o3_a.values, #initial guess
+##                                        method='lm',
 #                                        bounds=(0, np.inf), 
-                                        verbose=0, 
-#                                        max_nfev=3, #temp
-                                        args=(T_a.values,
-                                              m_a.values,
-                                              z, sol_zen, 
-                                              p_a.values,
-                                              o2delta_meas))                
-                o3_iris = res_lsq.x
-                resi = res_lsq.fun
+#                                        verbose=0, 
+##                                        max_nfev=3, #temp
+#                                        args=(T_a.values,
+#                                              m_a.values,
+#                                              z, sol_zen, 
+#                                              p_a.values,
+#                                              o2delta_meas))                
+#                o3_iris = res_lsq.x
+#                resi = res_lsq.fun
 
 
 #                sys.stderr.close()
@@ -203,7 +203,7 @@ if __name__ == '__main__':
 
     #%%
     year = [2008, 2008]
-    month = [7, 8]
+    month = [8, 9]
     t_bounds = Time(['{}-{}-01T00:00:00'.format(year[0], str(month[0]).zfill(2)),
                    '{}-{}-01T00:00:00'.format(year[1], str(month[1]).zfill(2))], 
                     format='isot', scale='utc')
@@ -300,7 +300,7 @@ if __name__ == '__main__':
 
 #%% saveing to nc file
     path = '/home/anqil/Documents/osiris_database/iris_ver_o3/'
-    ds.to_netcdf(path+'ver_o3_{}{}_nofilter_on_o2delta_meas_onlyfilter_on_o3copy.nc'.format(year[0], str(month[0]).zfill(2)))
+    ds.to_netcdf(path+'ver_o3_{}{}_mr08_0bound_forloop_o3copy.nc'.format(year[0], str(month[0]).zfill(2)))
 
 #    path = '/home/anqil/Desktop/'
 #    ds.to_netcdf(path+'8_images_without_MR_filter.nc')
