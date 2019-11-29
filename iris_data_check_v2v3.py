@@ -15,8 +15,8 @@ from astropy.time import Time
 
 
 #%%
-year = [2008]
-month = [8]
+year = [2008, 2008]
+month = [8, 9]
 t_bounds = Time(['{}-{}-01T00:00:00'.format(year[0], str(month[0]).zfill(2)),
                '{}-{}-01T00:00:00'.format(year[-1], str(month[-1]+1).zfill(2))], 
                 format='isot', scale='utc')
@@ -55,14 +55,14 @@ o3_iris = data_iris.o3_iris.where(data_iris.mr>0.8)
 #new calibration,new o3 apriori new kinetic coefficients, new TOA altitude, added B-band and IRA-band
 path = '/home/anqil/Documents/osiris_database/iris_ver_o3/'
 #filenames = 'ver_o3_{}{}_nofilter_on_o2delta_meas_onlyfilter_on_o3copy.nc' #month 3, 7 and 8
-filenames = 'ver_o3_{}{}_0bound_nofileter_on_o2delta_meas.nc' # month 3 and 8
+#filenames = 'ver_o3_{}{}_0bound_nofileter_on_o2delta_meas.nc' # month 3 and 8
 #filenames = 'ver_o3_{}{}_0bound_forloop.nc' # all months
-
+filenames = '{}{}_v5.nc'
 
 files = [path+filenames.format(year[i], str(month[i]).zfill(2)) for i in range(len(month))]
 
 data_iris_new = xr.open_mfdataset(files)
-data_iris_new['z'] = data_iris_new.z*1e-3 #m->km
+data_iris_new['z'] = data_iris_new.z#*1e-3 #m->km
 data_iris_new = data_iris_new.assign_coords(latitude = data_iris_new.latitude, 
                                             longitude = data_iris_new.longitude)
 
@@ -85,8 +85,8 @@ counts_new = data_iris_new.o3.where(data_iris_new.mr>0.8).groupby_bins('latitude
 counts_old = data_iris.o3_iris.where(data_iris.mr>0.8).groupby_bins('latitude', lat_bins, 
                                   labels=lat_bins_center).count()
 fig, ax = plt.subplots(nrows=1, ncols=2, sharex=True, sharey=False, figsize=(10,5))
-mean_new.plot(y='z', norm=LogNorm(vmin=vmin, vmax=vmax), ax=ax[0], ylim=(60,100), cmap='RdBu')
-mean_old.plot(y='z', norm=LogNorm(vmin=vmin, vmax=vmax), ax=ax[1], ylim=(60,100), cmap='RdBu')
+mean_new.plot(y='z', norm=LogNorm(vmin=vmin, vmax=vmax), ax=ax[0], ylim=(60,100), cmap='RdBu_r')
+mean_old.plot(y='z', norm=LogNorm(vmin=vmin, vmax=vmax), ax=ax[1], ylim=(60,100), cmap='RdBu_r')
 ax[0].set(title='new')
 ax[1].set(title='old')
 
@@ -102,28 +102,28 @@ mean_old.isel(latitude_bins=lat_sel).plot.line(y='z', color='k', ls='', marker='
 
 
 #%% look at apriori
-#mean_new = data_iris_new.o3_apriori.groupby_bins('latitude', lat_bins, 
-#                                 labels=lat_bins_center).mean(dim='mjd')
-#mean_old = data_iris.o3_xa.groupby_bins('latitude', lat_bins, 
-#                                  labels=lat_bins_center).mean(dim='mjd')
-#counts_new = data_iris_new.o3.where(data_iris_new.mr>0.8).groupby_bins('latitude', lat_bins, 
-#                                 labels=lat_bins_center).count()
-#counts_old = data_iris.o3_iris.where(data_iris.mr>0.8).groupby_bins('latitude', lat_bins, 
-#                                  labels=lat_bins_center).count()
-#fig, ax = plt.subplots(nrows=1, ncols=2, sharex=True, sharey=False, figsize=(10,5))
-#mean_new.plot(y='z', norm=LogNorm(vmin=1e6, vmax=1e10), ax=ax[0], ylim=(60,100))
-#mean_old.plot(y='z', norm=LogNorm(vmin=1e6, vmax=1e10), ax=ax[1], ylim=(60,100))
-#
-#lat_sel = np.array([22, 30])
-#
-#[ax[0].axvline(x=mean_new.latitude_bins[i], color='k') for i in lat_sel]
-#[ax[1].axvline(x=mean_old.latitude_bins[i], color='k') for i in lat_sel]
-#
-#plt.figure()
-#mean_new.isel(latitude_bins=lat_sel).plot.line(y='z', color='r', ls='', marker='.', 
-#             xscale='log', xlim=(1e6, 1e10), add_legend=False, ylim=(60,100))
-#mean_old.isel(latitude_bins=lat_sel).plot.line(y='z', color='k', ls='', marker='.', 
-#             xscale='log', xlim=(1e6, 1e10), add_legend=False)
+mean_new = data_iris_new.o3_apriori.groupby_bins('latitude', lat_bins, 
+                                 labels=lat_bins_center).mean(dim='mjd')
+mean_old = data_iris.o3_xa.groupby_bins('latitude', lat_bins, 
+                                  labels=lat_bins_center).mean(dim='mjd')
+counts_new = data_iris_new.o3.where(data_iris_new.mr>0.8).groupby_bins('latitude', lat_bins, 
+                                 labels=lat_bins_center).count()
+counts_old = data_iris.o3_iris.where(data_iris.mr>0.8).groupby_bins('latitude', lat_bins, 
+                                  labels=lat_bins_center).count()
+fig, ax = plt.subplots(nrows=1, ncols=2, sharex=True, sharey=False, figsize=(10,5))
+mean_new.plot(y='clima_z', norm=LogNorm(vmin=1e6, vmax=1e10), ax=ax[0], ylim=(60,100))
+mean_old.plot(y='z', norm=LogNorm(vmin=1e6, vmax=1e10), ax=ax[1], ylim=(60,100))
+
+lat_sel = np.array([22, 30])
+
+[ax[0].axvline(x=mean_new.latitude_bins[i], color='k') for i in lat_sel]
+[ax[1].axvline(x=mean_old.latitude_bins[i], color='k') for i in lat_sel]
+
+plt.figure()
+mean_new.isel(latitude_bins=lat_sel).plot.line(y='clima_z', color='r', ls='', marker='.', 
+             xscale='log', xlim=(1e6, 1e10), add_legend=False, ylim=(60,100))
+mean_old.isel(latitude_bins=lat_sel).plot.line(y='z', color='k', ls='', marker='.', 
+             xscale='log', xlim=(1e6, 1e10), add_legend=False)
 
 #%% check profiles that are at latitude higher than 50
 plt.figure()
