@@ -22,6 +22,7 @@ from astropy.time import Time
 from scipy.optimize import least_squares
 from o2delta_model import cal_o2delta_new
 from multiprocessing import Pool
+
 #%% oem for dense matrix
 def linear_oem(K, Se, Sa, y, xa):
     if len(y.shape) == 1:
@@ -82,6 +83,16 @@ def residual(o3, T, m, z, zenithangle, p, o2delta_meas):
     return o2delta_meas - o2delta_model
 
 #%%
+def rel_avk(xa, A):
+    #xa 1D array lenth n
+    #A 2D array size (n, n)
+    A_rel = np.zeros(A.shape)
+    for i in range(len(xa)):
+        for j in range(len(xa)):
+            A_rel[i, j] = xa[j] * A[i, j] / xa[i]
+    return A_rel
+
+#%%
 def f(i):
 
         alt_chop_cond = (altitude.isel(mjd=i)>bot) & (altitude.isel(mjd=i)<top) #select altitude range 
@@ -118,20 +129,24 @@ def f(i):
                 
 #                xa = o2delta_a * A_o2delta
                 xa = np.interp(z*1e-3, clima.z, o2delta_a) * A_o2delta
-                Sa = np.diag((1e2)**2 * np.ones(len(xa)))
+                Sa = np.diag((xa*0.75)**2)
+#                Sa = np.diag(xa**2)
                 h = altitude.isel(mjd=i).where(l1.isel(mjd=i).notnull(), drop=True
                                   ).where(alt_chop_cond, drop=True)
                 K = pathl1d_iris(h, z, z_top) * 1e2 # m-->cm    
                 yy = l1.isel(mjd=i).sel(pixel=h.pixel).data * normalize    
                 y = yy.copy()
-                y[y<0] = 1e9
-#                Se = np.diag((error.isel(mjd=i).sel(pixel=h.pixel).values * normalize)**2)
-                Se = np.diag(np.ones(len(y))* (1e11)**2)
+#                y[y<0] = 1e9
+                Se = np.diag((error.isel(mjd=i).sel(pixel=h.pixel).values * normalize)**2)
+#                Se = np.diag(np.ones(len(y))* (1e11)**2)
                 x, A, Ss, Sm = linear_oem(K, Se, Sa, y, xa)
                 y_fit = K.dot(x)
                 cost_x = (x-xa).T.dot(np.linalg.inv(Sa)).dot(x-xa)
                 cost_y = (y-y_fit).T.dot(np.linalg.inv(Se)).dot(y-y_fit)
                 mr = A.sum(axis=1)
+                A_rel = rel_avk(xa, A)
+                mr_rel = A_rel.sum(axis=1)
+                
                 y_fit = xr.DataArray(y_fit, coords={'pixel': h.pixel}, 
                                      dims='pixel').reindex(pixel=l1.pixel)/normalize                     
 #                print('get ozone')
@@ -144,6 +159,7 @@ def f(i):
 #                                        o3_a.values[mr>0.8], #initial guess
                                         o3_a.interp(z=z*1e-3).values,
 #                                        method='lm',
+#                                        xtol = 1e-8,
                                         bounds=(0, np.inf), verbose=2, 
 #                                        loss='cauchy', #'cauchy'?
 #                                        max_nfev=3, #temp
@@ -159,7 +175,7 @@ def f(i):
                 resi = res_lsq.fun
                 return (x, xa, np.diag(Sm), mr, o3_iris, o3_a.values, 
                         day_mjd_lst[i].values, res_lsq.status, res_lsq.nfev,
-                        resi, np.diag(Ss), y_fit, cost_x, cost_y, res_lsq.cost, A)
+                        resi, np.diag(Ss), y_fit, cost_x, cost_y, res_lsq.cost, A_rel, mr_rel)
          
             except:
                 print('something is wrong ({})'.format(i))
@@ -212,8 +228,7 @@ if __name__ == '__main__':
     top = 100e3
 #    top_extra = 110e3 # for apriori, cal_o2delta (J and g)
     #====retireval grid
-    z = np.arange(bot-10e3, top+30e3, 1e3) # m
-#    z = np.append(z, top_extra)
+    z = np.arange(bot-10e3, top+50e3, 1e3) # m
     z_top = z[-1] + 1e3 # for jacobian
 
 #%%
@@ -295,7 +310,6 @@ if __name__ == '__main__':
 #    ds.to_netcdf(path+filename.format(year[0], str(month[0]).zfill(2)))
 
 #%%
-
     alts_interp = np.arange(10e3, 150e3, .25e3)
     data_interp = []
     for (data, alt) in zip(ir.data.isel(mjd=index_lst), ir.altitude.isel(mjd=index_lst)):
@@ -327,9 +341,19 @@ if __name__ == '__main__':
     plt.title('fitted and original(k) limb profiles in z space')
 #    fig.savefig(figdir+'limb_z.png')
     
+#    color = ['C{}'.format(i) for i in range(5)] 
+#    fig = plt.figure()
+##    measured_o2.plot.line(y='z', add_legend=False, color='k', xscale='log')
+#    [plt.plot(data_interp[i], alts_interp, color=color[i]) for i in range(5)]
+#    [plt.plot(fit_interp[i], alts_interp,'.', color=color[i]) for i in range(5)]
+#    plt.ylim([60e3, 100e3])
+#    plt.xscale('log')
+    
+    
     fig = plt.figure()
     (data_interp - fit_interp).plot.line(y='z')
     plt.title('y-Kx')
+    ir.error.isel(mjd=index_lst).plot.line(y='pixel')
 #    fig = plt.figure()
 #    ir.data.sel(mjd=mjd_index_lst).plot.line(y='pixel', color='k', add_legend=False)
 #    ds.limb_fit.plot.line(y='pixel',  marker='.', ls='', xscale='linear')#, color='k')
@@ -345,8 +369,10 @@ if __name__ == '__main__':
     measured_o2.plot.line(y='z', add_legend=False, color='k', xscale='log')
     fitted_o2.plot.line(y='z', xscale='log', ls='-', marker='.')
     plt.title('o2delta_measured (VER/A) vs o2delta_fitted (measured - residual)')
-
+    plt.ylim([bot*1e-3, top*1e-3])
+#    fitted_o2+ds.ver_error)
 #    fig.savefig(figdir+'o2delta.png')
+
     
     fig = plt.figure()
     ds.ver_apriori.plot.line(y='z', add_legend=False, ls='-', xscale='log', color='k')
@@ -361,7 +387,7 @@ if __name__ == '__main__':
     ds.o3_apriori.plot.line(y='clima_z', add_legend=False, ls='-', xscale='log', color='k')
     ds.o3.plot.line(y='z', marker='.', ls='-', xscale='log')
     plt.title('retrieved O3 vs apriori profiles')
-#    plt.ylim([z[0]*1e-3, z[-1]*1e-3])
+    plt.ylim([bot*1e-3, top*1e-3])
 
 #    fig.savefig(figdir+'o3.png')    
     
@@ -372,7 +398,13 @@ if __name__ == '__main__':
     plt.xlim([-1e-2, 1e-2])
 #    fig.savefig(figdir+'lsq_residual.png')
     
-
-
+    fig=plt.figure()
+    AVK_rel = result[0][15]
+    
+    np.argmax(AVK_rel,axis=1)
+    MR_rel = result[0][16]
+    plt.plot(AVK_rel, z)
+    plt.plot(AVK_rel.sum(axis=1), z)
+    plt.plot(MR_rel, z)
     plt.show()
 #    
