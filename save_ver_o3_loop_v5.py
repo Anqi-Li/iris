@@ -173,7 +173,7 @@ if __name__ == '__main__':
     
     #%%
     year = [2008, 2008]
-    month = [7,8]
+    month = [10,11]
 
     t_bounds = Time(['{}-{}-01T00:00:00'.format(year[0], str(month[0]).zfill(2)),
                    '{}-{}-01T00:00:00'.format(year[1], str(month[1]).zfill(2))], 

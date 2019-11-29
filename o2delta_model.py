@@ -587,7 +587,8 @@ def cal_o2delta_new(o3_in, T, m, z, zenithangle, p):
     # z unit should be in m
     # concentration units should be in cm-3
     o3 = o3_in.copy()
-    o3[o3<0] = 1e-8
+#    o3[o3<0] = 1e-8
+    
     o2 = 0.21 * m 
     n2 = 0.78 * m 
     co2 = 405e-6*m 

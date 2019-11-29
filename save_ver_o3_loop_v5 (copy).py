@@ -102,16 +102,12 @@ def f(i):
         
                 o3_a = o3_clima.sel(lst=lst.isel(mjd=i),
                                     lat=latitude.isel(mjd=i), 
-#                                    z=z*1e-3,
                                     method='nearest')
                 T_a = clima.T.sel(lat=latitude.isel(mjd=i), 
-#                                  z=z*1e-3, 
                                   method='nearest')
                 m_a = clima.m.sel(lat=latitude.isel(mjd=i),
-#                                  z=z*1e-3, 
                                   method='nearest')
                 p_a = clima.p.sel(lat=latitude.isel(mjd=i), 
-#                                  z=z*1e-3, 
                                   method='nearest') 
         
                 sol_zen = sza[i].item()
@@ -122,12 +118,15 @@ def f(i):
                 
 #                xa = o2delta_a * A_o2delta
                 xa = np.interp(z*1e-3, clima.z, o2delta_a) * A_o2delta
-                Sa = np.diag(xa**2)
+                Sa = np.diag((1e2)**2 * np.ones(len(xa)))
                 h = altitude.isel(mjd=i).where(l1.isel(mjd=i).notnull(), drop=True
                                   ).where(alt_chop_cond, drop=True)
                 K = pathl1d_iris(h, z, z_top) * 1e2 # m-->cm    
-                y = l1.isel(mjd=i).sel(pixel=h.pixel).data * normalize                
-                Se = np.diag((error.isel(mjd=i).sel(pixel=h.pixel).values * normalize)**2)
+                yy = l1.isel(mjd=i).sel(pixel=h.pixel).data * normalize    
+                y = yy.copy()
+                y[y<0] = 1e9
+#                Se = np.diag((error.isel(mjd=i).sel(pixel=h.pixel).values * normalize)**2)
+                Se = np.diag(np.ones(len(y))* (1e11)**2)
                 x, A, Ss, Sm = linear_oem(K, Se, Sa, y, xa)
                 y_fit = K.dot(x)
                 cost_x = (x-xa).T.dot(np.linalg.inv(Sa)).dot(x-xa)
@@ -140,31 +139,32 @@ def f(i):
                 o2delta_meas = x / A_o2delta # cm-3
                 o2delta_meas[o2delta_meas<0] = xa[o2delta_meas<0]/ A_o2delta / 1000    
 #                o2delta_meas[o2delta_meas<0] = 0
-                z_mr = z[mr>0.8]
+#                z_mr = z[mr>0.8]
                 res_lsq = least_squares(residual,
 #                                        o3_a.values[mr>0.8], #initial guess
-                                        o3_a.interp(z=z_mr*1e-3).values,
+                                        o3_a.interp(z=z*1e-3).values,
 #                                        method='lm',
-#                                        bounds=(0, np.inf), verbose=0, 
+                                        bounds=(0, np.inf), verbose=2, 
 #                                        loss='cauchy', #'cauchy'?
 #                                        max_nfev=3, #temp
-                                        args=(T_a.interp(z=z_mr*1e-3).values,
-                                              m_a.interp(z=z_mr*1e-3).values,
-                                              z_mr,  #in meter
+                                        args=(T_a.interp(z=z*1e-3).values,
+                                              m_a.interp(z=z*1e-3).values,
+                                              z,  #in meter
                                               sol_zen, 
-                                              p_a.interp(z=z_mr*1e-3).values,
-                                              o2delta_meas[mr>0.8]))
-                o3_iris = xr.DataArray(res_lsq.x, coords={'z': z_mr}, dims='z').reindex(z=z).data
-                resi = xr.DataArray(res_lsq.fun, coords={'z': z_mr}, dims='z').reindex(z=z).data
-    
+                                              p_a.interp(z=z*1e-3).values,
+                                              o2delta_meas))
+#                o3_iris = xr.DataArray(res_lsq.x, coords={'z': z_mr}, dims='z').reindex(z=z).data
+#                resi = xr.DataArray(res_lsq.fun, coords={'z': z_mr}, dims='z').reindex(z=z).data
+                o3_iris = res_lsq.x
+                resi = res_lsq.fun
                 return (x, xa, np.diag(Sm), mr, o3_iris, o3_a.values, 
                         day_mjd_lst[i].values, res_lsq.status, res_lsq.nfev,
-                        resi, np.diag(Ss), y_fit, cost_x, cost_y, res_lsq.cost)
+                        resi, np.diag(Ss), y_fit, cost_x, cost_y, res_lsq.cost, A)
          
             except:
                 print('something is wrong ({})'.format(i))
 
-#                raise
+                raise
                 pass
 
                 
@@ -210,10 +210,10 @@ if __name__ == '__main__':
     #====drop data below and above some altitudes
     bot = 63e3
     top = 100e3
-    top_extra = 110e3 # for apriori, cal_o2delta (J and g)
+#    top_extra = 110e3 # for apriori, cal_o2delta (J and g)
     #====retireval grid
-    z = np.arange(bot, top, 1e3) # m
-    z = np.append(z, top_extra)
+    z = np.arange(bot-10e3, top+30e3, 1e3) # m
+#    z = np.append(z, top_extra)
     z_top = z[-1] + 1e3 # for jacobian
 
 #%%
@@ -222,8 +222,8 @@ if __name__ == '__main__':
 #    for i in range(len(day_mjd_lst)): 
 #        result.append(f(i))
     
-##    index_lst = [251, 261, 8962, 13716, 24600]
-    index_lst = [2190,  2192, 2194, 3313, 9349, 10562, 10662, 21947]
+    index_lst = [251, 261, 8962, 13716, 24600]
+#    index_lst = [2190,  2192, 2194, 3313, 9349, 10562, 10662, 21947]
 #    index_lst = [56, 57]
     result = []
     for i in index_lst:
@@ -241,6 +241,8 @@ if __name__ == '__main__':
     o3_apriori = xr.DataArray(np.stack([result[i][5] for i in range(len(result))]),
                             coords=(mjd, clima.z), 
                             dims=('mjd', 'clima_z'), name='climatology ozone', attrs={'units': 'photons cm-3 s-1'})
+#    oem_avk = xr.DataArray(np.stack([result[i][5] for i in range(len(result))]),
+#                           )
     ds = xr.Dataset({'ver': result_1d, 
                      'ver_apriori': (['mjd', 'z'], 
                                      np.stack([result[i][1] for i in range(len(result))]), 
@@ -312,15 +314,16 @@ if __name__ == '__main__':
     
     
 #% plotting things
-    plt.rcParams.update({'font.size': 20, 'figure.figsize': (12,6)})
+    plt.rcParams.update({'font.size': 15, 'figure.figsize': (10,5)})
     figdir = '/home/anqil/Desktop/'
     mjd_index_lst = ir.mjd[index_lst]
     
     fig = plt.figure()
 #    data_interp.plot(y='z', robust=True, add_colorbar=False, norm=LogNorm(vmin=1e9, vmax=1e13), cmap='viridis')
-    data_interp.plot.line(y='z', add_legend=False, color='k')
-    fit_interp.plot.line(y='z', add_legend=True, ls='', marker='.')#, color='k')
-#    plt.ylim([bot, top])
+    data_interp.plot.line(y='z', xscale='log', add_legend=False, color='k')
+    fit_interp.plot.line(y='z',  xscale='log', add_legend=True, ls='-', marker='.')#, color='k')
+    plt.ylim([bot, top])
+    plt.xlim([0, 1e13])
     plt.title('fitted and original(k) limb profiles in z space')
 #    fig.savefig(figdir+'limb_z.png')
     
@@ -332,19 +335,25 @@ if __name__ == '__main__':
 #    ds.limb_fit.plot.line(y='pixel',  marker='.', ls='', xscale='linear')#, color='k')
 #    plt.title('fitted and original (k) limb profiles in pixel space')
 ##    fig.savefig(figdir+'limb_pixel.png')
-
+    fig = plt.figure()
+    ds.mr.plot.line(y='z')
+    
+    
     measured_o2 = ds.ver / A_o2delta
     fitted_o2 = measured_o2 - ds.lsq_residual
     fig = plt.figure()
-    measured_o2.where(ds.mr>0.8).plot.line(y='z', add_legend=False, color='k', xscale='log')
+    measured_o2.plot.line(y='z', add_legend=False, color='k', xscale='log')
     fitted_o2.plot.line(y='z', xscale='log', ls='-', marker='.')
-    plt.title('o2delta_measured (VER/A,mr>0.8) vs o2delta_fitted (measured - residual)')
+    plt.title('o2delta_measured (VER/A) vs o2delta_fitted (measured - residual)')
+
 #    fig.savefig(figdir+'o2delta.png')
     
     fig = plt.figure()
     ds.ver_apriori.plot.line(y='z', add_legend=False, ls='-', xscale='log', color='k')
     ds.ver.plot.line(y='z', marker='.', ls='-', xscale='log')
     plt.title('retrieved VER vs apriori profiles')
+#    plt.ylim([z[0]*1e-3, z[-1]*1e-3])
+
 #    plt.ylim([60, 100])
 #    fig.savefig(figdir+'ver.png')
 
@@ -352,12 +361,15 @@ if __name__ == '__main__':
     ds.o3_apriori.plot.line(y='clima_z', add_legend=False, ls='-', xscale='log', color='k')
     ds.o3.plot.line(y='z', marker='.', ls='-', xscale='log')
     plt.title('retrieved O3 vs apriori profiles')
+#    plt.ylim([z[0]*1e-3, z[-1]*1e-3])
+
 #    fig.savefig(figdir+'o3.png')    
     
     fig = plt.figure()
     ds.lsq_residual.plot.line(y='z')
     plt.title('residual from non-linear fit')
-#    plt.xlim([-1e-1, 1e-1])
+#    plt.ylim([z[0]*1e-3, z[-1]*1e-3])
+    plt.xlim([-1e-2, 1e-2])
 #    fig.savefig(figdir+'lsq_residual.png')
     
 
