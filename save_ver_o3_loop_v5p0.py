@@ -156,7 +156,8 @@ def f(i):
                                         o3_a.interp(z=z*1e-3).values,
 #                                        method='lm',
 #                                        xtol = 1e-8,
-                                        bounds=(0, np.inf), verbose=2, 
+                                        bounds=(0, np.inf),
+#					 verbose=2, 
 #                                        loss='cauchy', #'cauchy'?
 #                                        max_nfev=3, #temp
                                         args=(T_a.interp(z=z*1e-3).values,
