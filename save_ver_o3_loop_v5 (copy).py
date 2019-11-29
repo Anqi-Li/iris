@@ -134,8 +134,8 @@ def f(i):
                 h = altitude.isel(mjd=i).where(l1.isel(mjd=i).notnull(), drop=True
                                   ).where(alt_chop_cond, drop=True)
                 K = pathl1d_iris(h, z, z_top) * 1e2 # m-->cm    
-                yy = l1.isel(mjd=i).sel(pixel=h.pixel).data * normalize    
-                y = yy.copy()
+                y = l1.isel(mjd=i).sel(pixel=h.pixel).data * normalize    
+#                y = yy.copy()
 #                y[y<0] = 1e9
                 Se = np.diag((error.isel(mjd=i).sel(pixel=h.pixel).values * normalize)**2)
 #                Se = np.diag(np.ones(len(y))* (1e11)**2)
@@ -310,33 +310,35 @@ if __name__ == '__main__':
 #    ds.to_netcdf(path+filename.format(year[0], str(month[0]).zfill(2)))
 
 #%%
-    alts_interp = np.arange(10e3, 150e3, .25e3)
+#    alts_interp = np.arange(10e3, 150e3, .25e3)
+    alts_interp = z#np.arange(bot, top, 1e3)
     data_interp = []
-    for (data, alt) in zip(ir.data.isel(mjd=index_lst), ir.altitude.isel(mjd=index_lst)):
+    fit_interp = []
+    error_interp = []
+    for (err, data, fit, alt) in zip(error.isel(mjd=index_lst), 
+         l1.isel(mjd=index_lst), ds.limb_fit, altitude.isel(mjd=index_lst)):
         f_int = interp1d(alt, data, bounds_error=False)
         data_interp.append(f_int(alts_interp))
-    data_interp = xr.DataArray(data_interp, coords=[ir.mjd.isel(mjd=index_lst), 
-                                                    alts_interp], dims=['mjd', 'z'])
-    
-    fit_interp = []
-    for (data, alt) in zip(ds.limb_fit, ir.altitude.sel(mjd=ds.mjd, pixel=slice(14,128))):
-        f_int = interp1d(alt, data, bounds_error=False)
+        f_int = interp1d(alt, fit, bounds_error=False)
         fit_interp.append(f_int(alts_interp))
+        f_int = interp1d(alt, err, bounds_error=False)
+        error_interp.append(f_int(alts_interp))
+    data_interp = xr.DataArray(data_interp, coords=[ds.mjd, alts_interp], 
+                              dims=['mjd', 'z'])  
     fit_interp = xr.DataArray(fit_interp, coords=[ds.mjd, alts_interp], 
                               dims=['mjd', 'z'])
+    error_interp = xr.DataArray(error_interp, coords=[ds.mjd, alts_interp], 
+                              dims=['mjd', 'z'])
     
-    
-    
+    #%%
 #% plotting things
     plt.rcParams.update({'font.size': 15, 'figure.figsize': (10,5)})
     figdir = '/home/anqil/Desktop/'
-    mjd_index_lst = ir.mjd[index_lst]
     
     fig = plt.figure()
-#    data_interp.plot(y='z', robust=True, add_colorbar=False, norm=LogNorm(vmin=1e9, vmax=1e13), cmap='viridis')
     data_interp.plot.line(y='z', xscale='log', add_legend=False, color='k')
-    fit_interp.plot.line(y='z',  xscale='log', add_legend=True, ls='-', marker='.')#, color='k')
-    plt.ylim([bot, top])
+    fit_interp.plot.line(y='z',  xscale='log', add_legend=True, ls='', marker='.')
+    plt.ylim([z[0], z[-1]])
     plt.xlim([0, 1e13])
     plt.title('fitted and original(k) limb profiles in z space')
 #    fig.savefig(figdir+'limb_z.png')
@@ -349,62 +351,73 @@ if __name__ == '__main__':
 #    plt.ylim([60e3, 100e3])
 #    plt.xscale('log')
     
-    
-    fig = plt.figure()
-    (data_interp - fit_interp).plot.line(y='z')
-    plt.title('y-Kx')
-    ir.error.isel(mjd=index_lst).plot.line(y='pixel')
 #    fig = plt.figure()
-#    ir.data.sel(mjd=mjd_index_lst).plot.line(y='pixel', color='k', add_legend=False)
-#    ds.limb_fit.plot.line(y='pixel',  marker='.', ls='', xscale='linear')#, color='k')
-#    plt.title('fitted and original (k) limb profiles in pixel space')
-##    fig.savefig(figdir+'limb_pixel.png')
+#    (data_interp - fit_interp).plot.line(y='z')
+#    error_interp.plot.line(y='z', color='k')
+#    plt.title('y-Kx and error from calibraion')
+#    plt.ylim([bot, top])
+    color = ['C{}'.format(i) for i in range(5)] 
+    fig = plt.figure()
+    [plt.plot((data_interp - fit_interp)[i], alts_interp, color=color[i]) for i in range(len(ds.mjd))]
+    [plt.plot((error_interp)[i], alts_interp, ls='--', color=color[i]) for i in range(len(ds.mjd))]    
+    [plt.plot(-(error_interp)[i], alts_interp, ls='--', color=color[i]) for i in range(len(ds.mjd))]  
+    plt.title('y-Kx (solid) and error from calibraion (dashed)')
+
+
+#%%
+    
     fig = plt.figure()
     ds.mr.plot.line(y='z')
-    
-    
+    plt.title('absolute measurement reponse')
+
+#%%
+    fig = plt.figure()
+    AVK_rel = result[0][15]
+    np.argmax(AVK_rel,axis=1)
+    MR_rel = result[0][16]
+    plt.plot(AVK_rel, z)
+    plt.plot(MR_rel, z)
+    plt.title('relative averaging kernel, mesurement response')
+#    
+#%% 
     measured_o2 = ds.ver / A_o2delta
     fitted_o2 = measured_o2 - ds.lsq_residual
     fig = plt.figure()
     measured_o2.plot.line(y='z', add_legend=False, color='k', xscale='log')
-    fitted_o2.plot.line(y='z', xscale='log', ls='-', marker='.')
-    plt.title('o2delta_measured (VER/A) vs o2delta_fitted (measured - residual)')
-    plt.ylim([bot*1e-3, top*1e-3])
-#    fitted_o2+ds.ver_error)
+    fitted_o2.plot.line(y='z', xscale='log', ls='', marker='.')
+    
+    (ds.ver_error**.5).plot.line(y='z', add_legend=False, xscale='log', color='k',ls='--')
+#    (fitted_o2 + 1e3*ds.ver_error**.5).plot.line(y='z', add_legend=False, xscale='log', color='k',ls='--')
+#    (fitted_o2 - 1e3*ds.ver_error**.5).plot.line(y='z', add_legend=False, xscale='log', color='k',ls='--')
+    plt.title('o2d_meas vs o2d_fitted (measured - residual)')
+#    plt.ylim([bot*1e-3, top*1e-3])
+    plt.ylim(z[0]*1e-3, z[-1]*1e-3)
 #    fig.savefig(figdir+'o2delta.png')
 
-    
+    cal_o2delta_new(ds.o3.isel(mjd=-1).values, clima.T.sel(lat=latitude.isel(mjd=i), 
+                                  method='nearest').interp(z=z*1e-3).values, clima.m.sel(lat=latitude.isel(mjd=i), 
+                                  method='nearest').interp(z=z*1e-3).values, z, sza[i].values, clima.p.sel(lat=latitude.isel(mjd=i), 
+                                  method='nearest').interp(z=z*1e-3).values)[0]
+#%%
     fig = plt.figure()
     ds.ver_apriori.plot.line(y='z', add_legend=False, ls='-', xscale='log', color='k')
     ds.ver.plot.line(y='z', marker='.', ls='-', xscale='log')
     plt.title('retrieved VER vs apriori profiles')
 #    plt.ylim([z[0]*1e-3, z[-1]*1e-3])
-
 #    plt.ylim([60, 100])
 #    fig.savefig(figdir+'ver.png')
-
+#%%
     fig = plt.figure()
     ds.o3_apriori.plot.line(y='clima_z', add_legend=False, ls='-', xscale='log', color='k')
     ds.o3.plot.line(y='z', marker='.', ls='-', xscale='log')
     plt.title('retrieved O3 vs apriori profiles')
-    plt.ylim([bot*1e-3, top*1e-3])
-
+#    plt.ylim([bot*1e-3, top*1e-3])
 #    fig.savefig(figdir+'o3.png')    
-    
+#%% 
     fig = plt.figure()
     ds.lsq_residual.plot.line(y='z')
     plt.title('residual from non-linear fit')
 #    plt.ylim([z[0]*1e-3, z[-1]*1e-3])
-    plt.xlim([-1e-2, 1e-2])
+    plt.xlim([-1e-1, 1e-1])
 #    fig.savefig(figdir+'lsq_residual.png')
-    
-    fig=plt.figure()
-    AVK_rel = result[0][15]
-    
-    np.argmax(AVK_rel,axis=1)
-    MR_rel = result[0][16]
-    plt.plot(AVK_rel, z)
-    plt.plot(AVK_rel.sum(axis=1), z)
-    plt.plot(MR_rel, z)
-    plt.show()
-#    
+

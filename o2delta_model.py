@@ -583,11 +583,12 @@ def oxygen_atom(m, T, o3, j3):
 #    return o2delta, f_o2delta_o2sig*f_o2sig_barth, f_o2delta_o2sig*f_o2sig_gA, f_o2delta_o2sig*f_o2sig_1d*f_1d_o3 + f_o2delta_o3, f_o2delta_o2sig*f_o2sig_1d*f_1d_o2
 
 #%%
-def cal_o2delta_new(o3_in, T, m, z, zenithangle, p):
+def cal_o2delta_new(o3_in, T, m, z, zenithangle, p, correct_neg_o3 = True):
     # z unit should be in m
     # concentration units should be in cm-3
     o3 = o3_in.copy()
-    o3[o3<0] = 1e-8
+    if correct_neg_o3:
+        o3[o3<0] = 1e-8
     
     o2 = 0.21 * m 
     n2 = 0.78 * m 
