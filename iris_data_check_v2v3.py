@@ -15,8 +15,8 @@ from astropy.time import Time
 
 
 #%%
-year = [2008, 2008]
-month = [8, 9]
+year = [2008]
+month = [9]
 t_bounds = Time(['{}-{}-01T00:00:00'.format(year[0], str(month[0]).zfill(2)),
                '{}-{}-01T00:00:00'.format(year[-1], str(month[-1]+1).zfill(2))], 
                 format='isot', scale='utc')
