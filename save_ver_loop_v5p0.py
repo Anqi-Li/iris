@@ -1,24 +1,27 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Wed Nov 27 19:41:04 2019
+Created on Mon Dec  2 15:10:51 2019
 
-@author: anqili
+@author: anqil
 """
 
 import numpy as np
+import numpy.ma as ma
 import xarray as xr
 #import sys
 #import os
 import matplotlib.pylab as plt
+#from osirisl1services.readlevel1 import open_level1_ir
+#from osirisl1services.services import Level1Services
 from matplotlib.colors import LogNorm
 from scipy.interpolate import interp1d
-#from netCDF4 import num2date
+from netCDF4 import num2date
 units = 'days since 1858-11-17 00:00:00.000'
 from astropy.time import Time
 from scipy.optimize import least_squares
 from o2delta_model import cal_o2delta_new
-#from multiprocessing import Pool
+from multiprocessing import Pool
 
 #%% oem for dense matrix
 def linear_oem(K, Se, Sa, y, xa):
@@ -44,16 +47,6 @@ def linear_oem(K, Se, Sa, y, xa):
     Sm = G.dot(Se).dot(G.T) #retrieval noise 
     
     return x_hat.squeeze(), A, Ss, Sm
-
-#%%
-def rel_avk(xa, A):
-    #xa 1D array lenth n
-    #A 2D array size (n, n)
-    A_rel = np.zeros(A.shape)
-    for i in range(len(xa)):
-        for j in range(len(xa)):
-            A_rel[i, j] = xa[j] * A[i, j] / xa[i]
-    return A_rel
 
 #%% path length 1d
 def pathl1d_iris(h, z=np.arange(40e3, 110e3, 1e3), z_top=150e3):
@@ -81,13 +74,23 @@ def pathl1d_iris(h, z=np.arange(40e3, 110e3, 1e3), z_top=150e3):
 
 
 #%%
-def residual(o3, T, m, z, zenithangle, p, o2delta_meas):
-    o2delta_model = cal_o2delta_new(o3, T, m, z, zenithangle, p)[0] 
-#    print(id(o2delta_model))
-#    print(round(o3[30]*1e-6))
-#    plt.semilogx(o3, z) #temp
-#    plt.show()
-    return o2delta_meas - o2delta_model
+#def residual(o3, T, m, z, zenithangle, p, o2delta_meas):
+#    o2delta_model = cal_o2delta_new(o3, T, m, z, zenithangle, p)[0] 
+##    print(id(o2delta_model))
+##    print(round(o3[30]*1e-6))
+##    plt.semilogx(o3, z) #temp
+##    plt.show()
+#    return o2delta_meas - o2delta_model
+
+#%%
+def rel_avk(xa, A):
+    #xa 1D array lenth n
+    #A 2D array size (n, n)
+    A_rel = np.zeros(A.shape)
+    for i in range(len(xa)):
+        for j in range(len(xa)):
+            A_rel[i, j] = xa[j] * A[i, j] / xa[i]
+    return A_rel
 
 #%%
 def f(i):
@@ -124,8 +127,9 @@ def f(i):
                                             clima.z.values*1e3,
                                             sol_zen, p_a.values)[0]
                 
+#                xa = o2delta_a * A_o2delta
                 xa = np.interp(z*1e-3, clima.z, o2delta_a) * A_o2delta
-                Sa = np.diag((xa*0.65)**2)
+                Sa = np.diag((xa*0.75)**2)
 #                Sa = np.diag(xa**2)
                 h = altitude.isel(mjd=i).where(l1.isel(mjd=i).notnull(), drop=True
                                   ).where(alt_chop_cond, drop=True)
@@ -147,30 +151,32 @@ def f(i):
                                      dims='pixel').reindex(pixel=l1.pixel)/normalize                     
 #                print('get ozone')
                 #lsq fit to get ozone
-                o2delta_meas = x / A_o2delta # cm-3
-                o2delta_meas[o2delta_meas<0] = xa[o2delta_meas<0]/ A_o2delta / 1000    
-#                o2delta_meas[o2delta_meas<0] = 0
-#                z_mr = z[mr>0.8]
-                res_lsq = least_squares(residual,
-#                                        o3_a.values[mr>0.8], #initial guess
-                                        o3_a.interp(z=z*1e-3).values,
-#                                        method='lm',
-#                                        xtol = 1e-8,
-                                        bounds=(0, np.inf),
-#					 verbose=2, 
-#                                        loss='cauchy', #'cauchy'?
-#                                        max_nfev=3, #temp
-                                        args=(T_a.interp(z=z*1e-3).values,
-                                              m_a.interp(z=z*1e-3).values,
-                                              z,  #in meter
-                                              sol_zen, 
-                                              p_a.interp(z=z*1e-3).values,
-                                              o2delta_meas))
-                o3_iris = res_lsq.x
-                resi = res_lsq.fun
-                return (x, xa, np.diag(Sm), mr, mr_rel, o3_iris, o3_a.values, 
-                        day_mjd_lst[i].values, res_lsq.status, res_lsq.nfev,
-                        resi, np.diag(Ss), y_fit, cost_x, cost_y, res_lsq.cost)
+#                o2delta_meas = x / A_o2delta # cm-3
+#                o2delta_meas[o2delta_meas<0] = xa[o2delta_meas<0]/ A_o2delta / 1000    
+##                o2delta_meas[o2delta_meas<0] = 0
+##                z_mr = z[mr>0.8]
+#                res_lsq = least_squares(residual,
+##                                        o3_a.values[mr>0.8], #initial guess
+#                                        o3_a.interp(z=z*1e-3).values,
+##                                        method='lm',
+##                                        xtol = 1e-8,
+#                                        bounds=(0, np.inf), verbose=2, 
+##                                        loss='cauchy', #'cauchy'?
+#                                        max_nfev=30, #temp
+#                                        args=(T_a.interp(z=z*1e-3).values,
+#                                              m_a.interp(z=z*1e-3).values,
+#                                              z,  #in meter
+#                                              sol_zen, 
+#                                              p_a.interp(z=z*1e-3).values,
+#                                              o2delta_meas))
+##                o3_iris = xr.DataArray(res_lsq.x, coords={'z': z_mr}, dims='z').reindex(z=z).data
+##                resi = xr.DataArray(res_lsq.fun, coords={'z': z_mr}, dims='z').reindex(z=z).data
+#                o3_iris = res_lsq.x
+#                resi = res_lsq.fun
+                
+                return (x, xa, np.diag(Sm), np.diag(Ss), mr, mr_rel, 
+                        o3_a.values, day_mjd_lst[i].values, 
+                        y_fit, cost_x, cost_y)
          
             except:
                 print('something is wrong ({})'.format(i))
@@ -179,13 +185,12 @@ def f(i):
                 pass
 
                 
-                
 #%%
 if __name__ == '__main__': 
     
     #%%
-    year = [2007, 2007]
-    month = [11,12]
+    year = [2008, 2008]
+    month = [10, 11]
 
     t_bounds = Time(['{}-{}-01T00:00:00'.format(year[0], str(month[0]).zfill(2)),
                    '{}-{}-01T00:00:00'.format(year[1], str(month[1]).zfill(2))], 
@@ -224,7 +229,7 @@ if __name__ == '__main__':
     top = 100e3
 #    top_extra = 110e3 # for apriori, cal_o2delta (J and g)
     #====retireval grid
-    z = np.arange(50e3, 150e3, 1e3) # m
+    z = np.arange(50e3, 130e3, 1e3) # m
     z_top = z[-1] + 1e3 # for jacobian
 
 #%%
@@ -232,11 +237,11 @@ if __name__ == '__main__':
     result = []
     for i in range(len(day_mjd_lst)): 
         result.append(f(i))
-    
+#    
 #    index_lst = [251, 261, 8962, 13716, 24600]
-##    index_lst = np.array(index_lst) + 10
-##    index_lst = [2190,  2192, 2194, 3313, 9349, 10562, 10662, 21947]
-##    index_lst = [56, 57]
+#    index_lst = [2190,  2192, 2194, 3313, 9349, 10562, 10662, 21947]
+#    index_lst = [56, 57]
+#    index_lst = list(range(256,260))
 #    result = []
 #    for i in index_lst:
 #        result.append(f(i))
@@ -247,66 +252,41 @@ if __name__ == '__main__':
     result_1d = xr.DataArray(np.stack([result[i][0] for i in range(len(result))]), 
                              coords=(mjd, z*1e-3), 
                              dims=('mjd', 'z'), name='VER', attrs={'units': 'photons cm-3 s-1'})
-    limb_fit = xr.DataArray(np.stack([result[i][12] for i in range(len(result))]),
+    limb_fit = xr.DataArray(np.stack([result[i][8] for i in range(len(result))]),
                             coords=(mjd, l1.pixel),
                            dims=('mjd', 'pixel'), name='Limb Radiance fitted')
     o3_apriori = xr.DataArray(np.stack([result[i][6] for i in range(len(result))]),
                             coords=(mjd, clima.z), 
                             dims=('mjd', 'clima_z'), name='climatology ozone', attrs={'units': 'photons cm-3 s-1'})
+#    oem_avk = xr.DataArray(np.stack([result[i][5] for i in range(len(result))]),
+#                           )
     ds = xr.Dataset({'ver': result_1d, 
                      'ver_apriori': (['mjd', 'z'], 
                                      np.stack([result[i][1] for i in range(len(result))]), 
-                                     {'units': 'photons cm-3 s-1'}),
+                                     {'units': 'photons cm-3 s-1 squared'}),
                      'ver_error':(['mjd', 'z'], 
                                   np.stack([result[i][2] for i in range(len(result))]), 
-                                  {'units': '(photons cm-3 s-1)**2'}), 
+                                  {'units': 'photons cm-3 s-1 squared'}),
+                     'ver_smoothing':(['mjd','z'], np.stack([result[i][3] for i in range(len(result))])),
                      'mr':(['mjd', 'z'], 
-                           np.stack([result[i][3] for i in range(len(result))])), 
-                     'mr_rel':(['mjd', 'z'], 
                            np.stack([result[i][4] for i in range(len(result))])), 
-                           
-                     'o3':(['mjd', 'z'], 
-                           np.stack([result[i][5] for i in range(len(result))]), 
-                           {'units': 'molecule cm-3'}),
-#                     'o3_apriori':(['mjd', 'z'], 
-#                                   np.stack([result[i][5] for i in range(len(result))]), 
-#                                   {'units': 'molecule cm-3'}),
+                     'mr_rel':(['mjd', 'z'], 
+                           np.stack([result[i][5] for i in range(len(result))])), 
                      'o3_apriori': o3_apriori, 
                      'sza': sza.sel(mjd=mjd),
                      'lst': lst.sel(mjd=mjd),
                      'longitude': longitude.sel(mjd=mjd),
                      'latitude': latitude.sel(mjd=mjd),
-                     'status': (['mjd'], np.stack([result[i][8] for i in range(len(result))]),
-                                {'The reason for least_squares algorithm termination':
-                                    '''
-        -1 : improper input parameters status returned from MINPACK.
-
-        0 : the maximum number of function evaluations is exceeded.
-
-        1 : gtol termination condition is satisfied.
-
-        2 : ftol termination condition is satisfied.
-
-        3 : xtol termination condition is satisfied.
-
-        4 : Both ftol and xtol termination conditions are satisfied.
-                                '''}),
-                     'nfev': (['mjd'], np.stack([result[i][9] for i in range(len(result))]),
-                              {'long name': 'Number of function evaluations done.'}),
-                     'lsq_residual':(['mjd','z'], np.stack([result[i][10] for i in range(len(result))])),
-                     'ver_smoothing':(['mjd','z'], np.stack([result[i][11] for i in range(len(result))])),
                      'limb_fit': limb_fit,
-                     'cost_ver': (['mjd'], np.stack([result[i][13] for i in range(len(result))])),
-                     'cost_limb':(['mjd'], np.stack([result[i][14] for i in range(len(result))])),
-                     'cost_lsq': (['mjd'], np.stack([result[i][15] for i in range(len(result))]))
+                     'cost_ver': (['mjd'], np.stack([result[i][9] for i in range(len(result))])),
+                     'cost_limb':(['mjd'], np.stack([result[i][10] for i in range(len(result))]))
                      })
                      
-
 #%% saveing to nc file
     path = '/home/anqil/Documents/osiris_database/iris_ver_o3/'
-    filename = '{}{}_v5p0.nc'
+    filename = 'ver_{}{}_v5p0.nc'
     ds.to_netcdf(path+filename.format(year[0], str(month[0]).zfill(2)))
-    
+
 #%%
 ##    alts_interp = np.arange(10e3, 150e3, .25e3)
 #    alts_interp = z#np.arange(bot, top, 1e3)
@@ -328,7 +308,7 @@ if __name__ == '__main__':
 #    error_interp = xr.DataArray(error_interp, coords=[ds.mjd, alts_interp], 
 #                              dims=['mjd', 'z'])
 #    
-#
+#    #%%
 ##% plotting things
 #    plt.rcParams.update({'font.size': 15, 'figure.figsize': (10,5)})
 #    figdir = '/home/anqil/Desktop/'
@@ -354,7 +334,7 @@ if __name__ == '__main__':
 ##    error_interp.plot.line(y='z', color='k')
 ##    plt.title('y-Kx and error from calibraion')
 ##    plt.ylim([bot, top])
-#    color = ['C{}'.format(i) for i in range(len(ds.mjd))] 
+#    color = ['C{}'.format(i) for i in range(5)] 
 #    fig = plt.figure()
 #    [plt.plot((data_interp - fit_interp)[i], alts_interp, color=color[i]) for i in range(len(ds.mjd))]
 #    [plt.plot((error_interp)[i], alts_interp, ls='--', color=color[i]) for i in range(len(ds.mjd))]    
@@ -364,34 +344,15 @@ if __name__ == '__main__':
 #
 ##%%
 #    
-##    fig = plt.figure()
-##    ds.mr.plot.line(y='z')
-##    plt.title('absolute measurement reponse')
+#    fig = plt.figure()
+#    ds.mr.plot.line(y='z')
+#    plt.title('absolute measurement reponse')
 #
 ##%%
 #    fig = plt.figure()
 #    ds.mr_rel.plot.line(y='z')
-#    plt.title('relative mesurement response')
+#    plt.title('relative averaging kernel, mesurement response')
 ##    
-##%% 
-#    measured_o2 = ds.ver / A_o2delta
-#    fitted_o2 = measured_o2 - ds.lsq_residual
-#    fig = plt.figure()
-#    measured_o2.plot.line(y='z', add_legend=False, color='k', xscale='log')
-#    fitted_o2.plot.line(y='z', xscale='log', ls='', marker='.')
-#    
-#    (ds.ver_error**.5).plot.line(y='z', add_legend=False, xscale='log', color='k',ls='--')
-##    (fitted_o2 + 1e3*ds.ver_error**.5).plot.line(y='z', add_legend=False, xscale='log', color='k',ls='--')
-##    (fitted_o2 - 1e3*ds.ver_error**.5).plot.line(y='z', add_legend=False, xscale='log', color='k',ls='--')
-#    plt.title('o2d_meas vs o2d_fitted (measured - residual)')
-##    plt.ylim([bot*1e-3, top*1e-3])
-#    plt.ylim(z[0]*1e-3, z[-1]*1e-3)
-##    fig.savefig(figdir+'o2delta.png')
-#
-##    cal_o2delta_new(ds.o3.isel(mjd=-1).values, clima.T.sel(lat=latitude.isel(mjd=i), 
-##                                  method='nearest').interp(z=z*1e-3).values, clima.m.sel(lat=latitude.isel(mjd=i), 
-##                                  method='nearest').interp(z=z*1e-3).values, z, sza[i].values, clima.p.sel(lat=latitude.isel(mjd=i), 
-##                                  method='nearest').interp(z=z*1e-3).values)[0]
 ##%%
 #    fig = plt.figure()
 #    ds.ver_apriori.plot.line(y='z', add_legend=False, ls='-', xscale='log', color='k')
@@ -400,19 +361,7 @@ if __name__ == '__main__':
 ##    plt.ylim([z[0]*1e-3, z[-1]*1e-3])
 ##    plt.ylim([60, 100])
 ##    fig.savefig(figdir+'ver.png')
-##%%
-#    fig = plt.figure()
-#    ds.o3_apriori.plot.line(y='clima_z', add_legend=False, ls='-', xscale='log', color='k')
-#    ds.o3.plot.line(y='z', marker='.', ls='-', xscale='log')
-#    plt.title('retrieved O3 vs apriori profiles')
-##    plt.ylim([bot*1e-3, top*1e-3])
-##    fig.savefig(figdir+'o3.png')    
-##%% 
-#    fig = plt.figure()
-#    ds.lsq_residual.plot.line(y='z')
-#    plt.title('residual from non-linear fit')
-##    plt.ylim([z[0]*1e-3, z[-1]*1e-3])
-#    plt.xlim([-1e-1, 1e-1])
-##    fig.savefig(figdir+'lsq_residual.png')
-#
-##
+#    
+##    ver_test = ds.ver.copy()
+##    ver_test[ver_test<0] = ds.ver_apriori[ver_test<0]/1000
+##    ver_test.plot.line(y='z', marker='.', xscale='log')

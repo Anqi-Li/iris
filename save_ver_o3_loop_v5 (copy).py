@@ -152,30 +152,46 @@ def f(i):
 #                print('get ozone')
                 #lsq fit to get ozone
                 o2delta_meas = x / A_o2delta # cm-3
-                o2delta_meas[o2delta_meas<0] = xa[o2delta_meas<0]/ A_o2delta / 1000    
-#                o2delta_meas[o2delta_meas<0] = 0
-#                z_mr = z[mr>0.8]
+#                o2delta_meas[o2delta_meas<0] = xa[o2delta_meas<0]/ A_o2delta / 1000    
+#                o2delta_meas[o2delta_meas<0]
+                
+#                if (o2delta_meas<0).sum() > 0:
+#                    print('negative value found')
+#                    z_neg_1 = z[o2delta_meas<0].min()-1
+#                    f_interp = interp1d(np.append(z[z<z_neg_1], z[z>115e3]),
+#                                    np.log(np.append(o2delta_meas[z<z_neg_1],
+#                                                     xa[z>115e3]/A_o2delta)))
+#                    o2delta = np.exp(f_interp(z))
+#                else:
+                o2delta = o2delta_meas
                 res_lsq = least_squares(residual,
 #                                        o3_a.values[mr>0.8], #initial guess
                                         o3_a.interp(z=z*1e-3).values,
-#                                        method='lm',
+                                        method='trf',
 #                                        xtol = 1e-8,
-                                        bounds=(0, np.inf), verbose=2, 
-#                                        loss='cauchy', #'cauchy'?
-#                                        max_nfev=3, #temp
+#                                        bounds=(1e-1, np.inf),
+#                                        jac='3-point',
+#                                        diff_step=1e-12,
+#                                        ftol=1e-12,
+#                                        xtol = 1e-14,
+                                        verbose=2, 
+#                                        loss='soft_l1', #'cauchy'?
+#                                        tr_solver='exact',
+#                                        max_nfev=30, #temp
                                         args=(T_a.interp(z=z*1e-3).values,
                                               m_a.interp(z=z*1e-3).values,
                                               z,  #in meter
                                               sol_zen, 
                                               p_a.interp(z=z*1e-3).values,
-                                              o2delta_meas))
+                                              o2delta))
 #                o3_iris = xr.DataArray(res_lsq.x, coords={'z': z_mr}, dims='z').reindex(z=z).data
 #                resi = xr.DataArray(res_lsq.fun, coords={'z': z_mr}, dims='z').reindex(z=z).data
                 o3_iris = res_lsq.x
                 resi = res_lsq.fun
                 return (x, xa, np.diag(Sm), mr, o3_iris, o3_a.values, 
                         day_mjd_lst[i].values, res_lsq.status, res_lsq.nfev,
-                        resi, np.diag(Ss), y_fit, cost_x, cost_y, res_lsq.cost, A_rel, mr_rel)
+                        resi, np.diag(Ss), y_fit, cost_x, cost_y, res_lsq.cost,
+                        A_rel, mr_rel, o2delta, res_lsq.jac)
          
             except:
                 print('something is wrong ({})'.format(i))
@@ -189,7 +205,7 @@ if __name__ == '__main__':
     
     #%%
     year = [2008, 2008]
-    month = [8, 9]
+    month = [10, 11]
 
     t_bounds = Time(['{}-{}-01T00:00:00'.format(year[0], str(month[0]).zfill(2)),
                    '{}-{}-01T00:00:00'.format(year[1], str(month[1]).zfill(2))], 
@@ -224,22 +240,23 @@ if __name__ == '__main__':
     
     # define oem inversion grid
     #====drop data below and above some altitudes
-    bot = 63e3
+    bot = 61e3
     top = 100e3
 #    top_extra = 110e3 # for apriori, cal_o2delta (J and g)
     #====retireval grid
-    z = np.arange(bot-10e3, top+50e3, 1e3) # m
+    z = np.arange(50e3, 102e3, 1e3) # m
     z_top = z[-1] + 1e3 # for jacobian
 
 #%%
 
 #    result = []
-#    for i in range(len(day_mjd_lst)): 
+#    for i in range(10): #(len(day_mjd_lst)): 
 #        result.append(f(i))
     
-    index_lst = [251, 261, 8962, 13716, 24600]
+    index_lst = [8962]#[251, 261, 8962, 13716, 24600]
 #    index_lst = [2190,  2192, 2194, 3313, 9349, 10562, 10662, 21947]
 #    index_lst = [56, 57]
+#    index_lst = list(range(256,260))
     result = []
     for i in index_lst:
         result.append(f(i))
@@ -300,13 +317,15 @@ if __name__ == '__main__':
                      'limb_fit': limb_fit,
                      'cost_ver': (['mjd'], np.stack([result[i][12] for i in range(len(result))])),
                      'cost_limb':(['mjd'], np.stack([result[i][13] for i in range(len(result))])),
-                     'cost_lsq': (['mjd'], np.stack([result[i][14] for i in range(len(result))]))
+                     'cost_lsq': (['mjd'], np.stack([result[i][14] for i in range(len(result))])),
+                     'mr_rel': (['mjd','z'], np.stack([result[i][16] for i in range(len(result))])),
+                     'o2delta_lsq' : (['mjd', 'z'], np.stack([result[i][17] for i in range(len(result))]))
                      })
                      
 
 #%% saveing to nc file
 #    path = '/home/anqil/Documents/osiris_database/iris_ver_o3/'
-#    filename = '{}{}_v5.nc'
+#    filename = '{}{}_v5p0_test.nc'
 #    ds.to_netcdf(path+filename.format(year[0], str(month[0]).zfill(2)))
 
 #%%
@@ -332,14 +351,14 @@ if __name__ == '__main__':
     
     #%%
 #% plotting things
-    plt.rcParams.update({'font.size': 15, 'figure.figsize': (10,5)})
+    plt.rcParams.update({'font.size': 12, 'figure.figsize': (10,5)})
     figdir = '/home/anqil/Desktop/'
     
     fig = plt.figure()
     data_interp.plot.line(y='z', xscale='log', add_legend=False, color='k')
     fit_interp.plot.line(y='z',  xscale='log', add_legend=True, ls='', marker='.')
     plt.ylim([z[0], z[-1]])
-    plt.xlim([0, 1e13])
+#    plt.xlim([0, 1e13])
     plt.title('fitted and original(k) limb profiles in z space')
 #    fig.savefig(figdir+'limb_z.png')
     
@@ -373,51 +392,94 @@ if __name__ == '__main__':
 #%%
     fig = plt.figure()
     AVK_rel = result[0][15]
-    np.argmax(AVK_rel,axis=1)
+#    np.argmax(AVK_rel,axis=1)
     MR_rel = result[0][16]
     plt.plot(AVK_rel, z)
     plt.plot(MR_rel, z)
     plt.title('relative averaging kernel, mesurement response')
 #    
-#%% 
-    measured_o2 = ds.ver / A_o2delta
-    fitted_o2 = measured_o2 - ds.lsq_residual
+#%%
     fig = plt.figure()
-    measured_o2.plot.line(y='z', add_legend=False, color='k', xscale='log')
-    fitted_o2.plot.line(y='z', xscale='log', ls='', marker='.')
     
-    (ds.ver_error**.5).plot.line(y='z', add_legend=False, xscale='log', color='k',ls='--')
+    lsq_jac = result[0][18]
+    plt.plot(lsq_jac[z==78e3].squeeze().T, z)
+    plt.xlim([-1e-10, 1e-10])
+    plt.show()
+
+#%%
+    i=slice(0,len(index_lst))
+    fig = plt.figure()
+    ds.ver_apriori.isel(mjd=i).plot.line(y='z', add_legend=False, ls='-', xscale='log', color='k')
+    ds.ver.isel(mjd=i).plot.line(y='z', marker='.', ls='-', xscale='log')
+    
+#    (ds.o2delta_lsq.isel(mjd=i)*A_o2delta).plot.line(y='z', marker='.', ls='-')#, xscale='linear')
+    plt.title('retrieved VER vs apriori profiles')
+#    plt.plot(MR_rel*1e8, z*1e-3)
+#    plt.ylim([z[0]*1e-3, z[-1]*1e-3])
+#    plt.ylim([75, 95])
+#    fig.savefig(figdir+'ver.png')
+#    ax = plt.gca().twiny()
+#    np.log(ds.ver.isel(mjd=i)).differentiate('z').plot.line(
+#            y='z',marker='.', color='r', ax=ax)
+
+#%% check interped and original profiles of o2delta
+#    color = ['C{}'.format(i) for i in range(len(index_lst))] 
+#    o2delta_interp = ds.o2delta_lsq
+#    o2delta_org = ds.ver/A_o2delta
+#    fig = plt.figure()
+##    o2delta_org.plot.line(y='z', xscale='log')
+##    o2delta_interp.plot.line(y='z', marker='.')
+#    [plt.semilogx(o2delta_interp[i], o2delta_interp.z, '--', color=color[i]) for i in range(len(index_lst))]
+#    [plt.semilogx(o2delta_org[i], o2delta_org.z, '-', color=color[i]) for i in range(len(index_lst))]
+#
+#    plt.ylim([70, 110])
+
+#%% 
+    measured_o2 = ds.o2delta_lsq #ds.ver / A_o2delta
+    
+#    fitted_o2 = measured_o2 - ds.lsq_residual
+    fitted_o2 = []
+    for i in range(len(index_lst)):
+        fitted_o2.append(cal_o2delta_new(ds.o3.isel(mjd=i).values, 
+                        clima.T.sel(lat=latitude.isel(mjd=i), 
+                                    method='nearest').interp(z=z*1e-3).values, 
+                        clima.m.sel(lat=latitude.isel(mjd=i), 
+                                    method='nearest').interp(z=z*1e-3).values, 
+                        z, ds.sza[i].values, 
+                        clima.p.sel(lat=latitude.isel(mjd=i), 
+                                    method='nearest').interp(z=z*1e-3).values)[0])
+    fitted_o2 = np.array(fitted_o2)
+    
+    i = slice(0,len(index_lst))#0
+    fig = plt.figure()
+    measured_o2.isel(mjd=i).plot.line(y='z', add_legend=False, color='k', xscale='log')
+#    fitted_o2.plot.line(y='z', xscale='log', ls='', marker='.')
+    plt.plot(fitted_o2[i].T, z*1e-3, '.')    
+#    (ds.ver_error**.5).plot.line(y='z', add_legend=False, xscale='log', color='k',ls='--')
 #    (fitted_o2 + 1e3*ds.ver_error**.5).plot.line(y='z', add_legend=False, xscale='log', color='k',ls='--')
 #    (fitted_o2 - 1e3*ds.ver_error**.5).plot.line(y='z', add_legend=False, xscale='log', color='k',ls='--')
     plt.title('o2d_meas vs o2d_fitted (measured - residual)')
 #    plt.ylim([bot*1e-3, top*1e-3])
-    plt.ylim(z[0]*1e-3, z[-1]*1e-3)
+#    plt.ylim(z[0]*1e-3, z[-1]*1e-3)
+#    plt.ylim(70,85)
 #    fig.savefig(figdir+'o2delta.png')
 
-    cal_o2delta_new(ds.o3.isel(mjd=-1).values, clima.T.sel(lat=latitude.isel(mjd=i), 
-                                  method='nearest').interp(z=z*1e-3).values, clima.m.sel(lat=latitude.isel(mjd=i), 
-                                  method='nearest').interp(z=z*1e-3).values, z, sza[i].values, clima.p.sel(lat=latitude.isel(mjd=i), 
-                                  method='nearest').interp(z=z*1e-3).values)[0]
-#%%
-    fig = plt.figure()
-    ds.ver_apriori.plot.line(y='z', add_legend=False, ls='-', xscale='log', color='k')
-    ds.ver.plot.line(y='z', marker='.', ls='-', xscale='log')
-    plt.title('retrieved VER vs apriori profiles')
-#    plt.ylim([z[0]*1e-3, z[-1]*1e-3])
-#    plt.ylim([60, 100])
-#    fig.savefig(figdir+'ver.png')
+
+
 #%%
     fig = plt.figure()
     ds.o3_apriori.plot.line(y='clima_z', add_legend=False, ls='-', xscale='log', color='k')
     ds.o3.plot.line(y='z', marker='.', ls='-', xscale='log')
     plt.title('retrieved O3 vs apriori profiles')
 #    plt.ylim([bot*1e-3, top*1e-3])
-#    fig.savefig(figdir+'o3.png')    
+#    plt.xlim([-1e9, 1e9])
+#    fig.savefig(figdir+'o3.png') 
+    
 #%% 
     fig = plt.figure()
     ds.lsq_residual.plot.line(y='z')
     plt.title('residual from non-linear fit')
-#    plt.ylim([z[0]*1e-3, z[-1]*1e-3])
+    plt.ylim([z[0]*1e-3, z[-1]*1e-3])
     plt.xlim([-1e-1, 1e-1])
 #    fig.savefig(figdir+'lsq_residual.png')
 

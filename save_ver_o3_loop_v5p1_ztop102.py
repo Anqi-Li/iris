@@ -125,7 +125,7 @@ def f(i):
                                             sol_zen, p_a.values)[0]
                 
                 xa = np.interp(z*1e-3, clima.z, o2delta_a) * A_o2delta
-                Sa = np.diag((xa*0.65)**2)
+                Sa = np.diag((xa*0.75)**2)
 #                Sa = np.diag(xa**2)
                 h = altitude.isel(mjd=i).where(l1.isel(mjd=i).notnull(), drop=True
                                   ).where(alt_chop_cond, drop=True)
@@ -148,7 +148,7 @@ def f(i):
 #                print('get ozone')
                 #lsq fit to get ozone
                 o2delta_meas = x / A_o2delta # cm-3
-                o2delta_meas[o2delta_meas<0] = xa[o2delta_meas<0]/ A_o2delta / 1000    
+#                o2delta_meas[o2delta_meas<0] = xa[o2delta_meas<0]/ A_o2delta / 1000    
 #                o2delta_meas[o2delta_meas<0] = 0
 #                z_mr = z[mr>0.8]
                 res_lsq = least_squares(residual,
@@ -156,7 +156,7 @@ def f(i):
                                         o3_a.interp(z=z*1e-3).values,
 #                                        method='lm',
 #                                        xtol = 1e-8,
-                                        bounds=(0, np.inf),
+#                                        bounds=(0, np.inf),
 #					 verbose=2, 
 #                                        loss='cauchy', #'cauchy'?
 #                                        max_nfev=3, #temp
@@ -184,8 +184,8 @@ def f(i):
 if __name__ == '__main__': 
     
     #%%
-    year = [2007, 2007]
-    month = [11,12]
+    year = [2008, 2008]
+    month = [8,9]
 
     t_bounds = Time(['{}-{}-01T00:00:00'.format(year[0], str(month[0]).zfill(2)),
                    '{}-{}-01T00:00:00'.format(year[1], str(month[1]).zfill(2))], 
@@ -224,7 +224,7 @@ if __name__ == '__main__':
     top = 100e3
 #    top_extra = 110e3 # for apriori, cal_o2delta (J and g)
     #====retireval grid
-    z = np.arange(50e3, 150e3, 1e3) # m
+    z = np.arange(59e3, 102e3, 1e3) # m
     z_top = z[-1] + 1e3 # for jacobian
 
 #%%
@@ -304,7 +304,7 @@ if __name__ == '__main__':
 
 #%% saveing to nc file
     path = '/home/anqil/Documents/osiris_database/iris_ver_o3/'
-    filename = '{}{}_v5p0.nc'
+    filename = '{}{}_v5p1.nc'
     ds.to_netcdf(path+filename.format(year[0], str(month[0]).zfill(2)))
     
 #%%
