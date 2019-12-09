@@ -79,7 +79,7 @@ def fit_ozone(i):
 
 #%% load oem data
 year = 2008
-month = 1
+month = 4
 
 path = '/home/anqil/Documents/osiris_database/iris_ver_o3/'
 filenames = 'ver_{}{}_v5p0.nc'.format(year, str(month).zfill(2))
@@ -102,12 +102,12 @@ clima = clima.update({'o3': o3_clima})
 #index_lst = [2190,  2192, 2194, 3313, 9349, 10562, 10662, 21947]
 #index_lst = [56, 57]
 #index_lst = list(range(256,258))
-#index_lst = (np.random.uniform(0,len(data.mjd), 10)).astype(int)
+index_lst = (np.random.uniform(0,len(data.mjd), 5)).astype(int)
 result=[]
-for i in range(len(data.mjd)):#index_lst:
+for i in index_lst:#range(len(data.mjd)):#index_lst:
     result.append(fit_ozone(i))
-    
-result = [i for i in result if i]    
+
+result = [i for i in result if i] 
 mjd = np.stack([result[i][0] for i in range(len(result))])
 o3_iris = xr.DataArray(np.stack([result[i][1] for i in range(len(result))]), 
                          coords=(mjd, data.z), 
@@ -125,19 +125,22 @@ ds = xr.Dataset({'o3': o3_iris,
                 'o2delta':(['mjd', 'z'], 
                                   np.stack([result[i][6] for i in range(len(result))])),
                 'datetime':(['mjd'], num2date(mjd,units))
+                }, attrs={'ozone fitting':
+                    '''no correction on negative ozone in forward model, 
+                        only select mr>0.8 in VER data.'''
                 })
                 
-##%%
-#plt.rcParams.update({'font.size': 14})
-#fig, ax = plt.subplots(3, 1, sharey=True, figsize=(8,10))
-#fig.tight_layout()
-##(data.ver_apriori/A_o2delta).isel(mjd=index_lst).plot.line(y='z', color='k', ax=ax[0])
-##data.o3_apriori.isel(mjd=index_lst).sel(clima_z=slice(60,130)).plot.line(y='clima_z', color = 'k', ax=ax[1])
-#
-#ds.o2delta.plot.line(y='z', ax=ax[0], xscale='log', add_legend=False)                                  
-#ds.o3.plot.line(y='z', ax=ax[1], ls='-', marker='.', xscale='log', add_legend=False)
-#ds.lsq_residual.plot.line(y='z', ax=ax[2], xscale='linear')
+#%%
+plt.rcParams.update({'font.size': 14})
+fig, ax = plt.subplots(3, 1, sharey=True, figsize=(8,10))
+fig.tight_layout()
+#(data.ver_apriori/A_o2delta).isel(mjd=index_lst).plot.line(y='z', color='k', ax=ax[0])
+#data.o3_apriori.isel(mjd=index_lst).sel(clima_z=slice(60,130)).plot.line(y='clima_z', color = 'k', ax=ax[1])
+
+ds.o2delta.plot.line(y='z', ax=ax[0], xscale='log', add_legend=False)                                  
+ds.o3.plot.line(y='z', ax=ax[1], ls='-', marker='.', xscale='log', add_legend=False)
+ds.lsq_residual.plot.line(y='z', ax=ax[2], xscale='linear')
 
 #%%
-path = '/home/anqil/Documents/osiris_database/iris_ver_o3/'
-ds.to_netcdf(path+'o3_{}{}_mr08_o3false.nc'.format(year, str(month).zfill(2)))
+#path = '/home/anqil/Documents/osiris_database/iris_ver_o3/'
+#ds.to_netcdf(path+'o3_{}{}_mr08_o3false.nc'.format(year, str(month).zfill(2)))

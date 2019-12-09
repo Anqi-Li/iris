@@ -53,10 +53,10 @@ ax[1].axhline(y=90)
 ax[0].axvline(x=ir.mjd[828])
 
 #%% load IRIS result
-file = '/home/anqil/Documents/osiris_database/iris_ver_o3/ver_o3_200801_new2_quater1.nc'
+file = '/home/anqil/Documents/osiris_database/iris_ver_o3/ver_200801_v5p0.nc'
 ds = xr.open_dataset(file)
 data_iris = ds.sel(mjd=slice(day_mjd_lst[0], day_mjd_lst[-1]))
-data_iris['z'] = data_iris.z*1e-3 # to km 
+#data_iris['z'] = data_iris.z*1e-3 # to km 
 
 mr_threshold = 0.8
 
@@ -106,7 +106,8 @@ gs = GridSpec(1, 2, width_ratios=[3, 1], wspace=0.02)
 ax1 = fig.add_subplot(gs[0])
 ax2 = fig.add_subplot(gs[1])
 
-data_iris.ver.where(data_iris.mr>0.8, drop=True).plot(ax=ax1, y='z', robust=True, 
+data_iris.ver.where(data_iris.mr>0.8, drop=True).plot(ax=ax1, y='z', 
+                   robust=True, 
                   norm=LogNorm(vmin=1e4, vmax=1e7),
                   cbar_kwargs={'label':'VER / ($cm^{-3}$ $s^{-1}$)'})
 idx = [40, 570, 915, 1250]
@@ -143,6 +144,14 @@ plt.rcParams.update({'font.size': 14})
 plt.show()
 fig.savefig('/home/anqil/Documents/reportFigure/article2/iris_ver_sample.png',
             bbox_inches = "tight")
+
+#%% plot measurement response
+fig = plt.figure()
+data_iris.mr_rel.isel(mjd=idx).plot.line(y='z',marker='.', add_legend=False)
+plt.gca().set(xlabel='relative measurement response',
+               ylabel='Altitude / km')
+plt.legend(['Im {}'.format(i) for i in idx])
+
 
 #%%
 plt.figure()

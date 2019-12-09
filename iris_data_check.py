@@ -14,7 +14,7 @@ from astropy.time import Time
 
 #%%
 year = [2008]
-month = [3]
+month = [10]
 
 #%% load iris ver
 path = '/home/anqil/Documents/osiris_database/iris_ver_o3/'
@@ -47,7 +47,8 @@ mean_ver = data_ver.ver.where(
                                  labels=lat_bins_center).mean(dim='mjd')
 
 fig, ax = plt.subplots(nrows=1, ncols=2, sharex=True, sharey=False, figsize=(10,5))
-fig.tight_bbos()
+#fig.tight_bbox()
 mean_o3.plot(y='z', norm=LogNorm(vmin=vmin, vmax=vmax), ax=ax[0], cmap='RdBu_r')
 mean_ver.plot(y='z', norm=LogNorm(vmin=0.9e5, vmax=1e6), ax=ax[1], cmap='RdBu_r')
-
+ax[0].set(title='O3')
+ax[1].set(title='VER')
