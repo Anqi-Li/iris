@@ -762,50 +762,50 @@ def cal_o2delta_new(o3_in, T, m, z, zenithangle, p, correct_neg_o3=True):
 #    plt.savefig('/home/anqil/Documents/reportFigure/article2/contributions.png')
     
 #%% test test test ! 
-#if __name__ == '__main__':    
-#    path = '/home/anqil/Desktop/'
-#    #file = 'problem_o3.nc'
-#    file = 'test_no_mr_bound.nc'
-#    #file = 'test_with_mr_bound.nc'
-#    ds = xr.open_dataset(path+file)
-#    ds = ds.isel(mjd=1)
-#    # load climatology
-#    path = '/home/anqil/Documents/osiris_database/ex_data/'
-#    file = 'msis_cmam_climatology.nc'
-#    clima = xr.open_dataset(path+file)#.interp(z=z*1e-3)
-#    clima = clima.update({'m':(clima.o + clima.o2 + clima.n2)*1e-6}) #cm-3
-#    clima = clima.sel(month=8)
-#    o3_clima = clima.o3_vmr * clima.m #cm-3
-#    
-#    T_a = clima.T.interp(lat=ds.latitude, z=ds.z[ds.mr>0.8]*1e-3)
-#    m_a = clima.m.interp(lat=ds.latitude, z=ds.z[ds.mr>0.8]*1e-3)
-#    p_a = clima.p.interp(lat=ds.latitude, z=ds.z[ds.mr>0.8]*1e-3) 
-#    
-#    sol_zen = ds.sza.item()
-#    o2delta = cal_o2delta_new(ds.o3[ds.mr>0.8].data, T_a.data, m_a.data, ds.z[ds.mr>0.8],
-#                                            sol_zen, p_a.data)[0]
-#    A_o2delta = 2.23e-4
-#    o2delta_ver = o2delta * A_o2delta
-#    plt.figure()
-#    plt.semilogx(o2delta_ver, ds.z[ds.mr>0.8], '.', label='problem o3 VER')
-#    plt.semilogx(ds.ver, ds.z, '-')
-#    
-#    
-#    result = cal_o2delta_new(ds.o3[ds.mr>0.8].values, T_a.data, m_a.data, 
-#                             ds.z[ds.mr>0.8], sol_zen, p_a.data)
-#    fig, ax = plt.subplots(nrows=1, ncols=2, sharey=True, figsize=(15,5))
-#    ax[1].plot(result[1]*result[0], ds.z[ds.mr>0.8], color='C0')
-#    ax[1].plot(result[2]*result[0], ds.z[ds.mr>0.8], color='C1')
-#    ax[1].plot(result[3]*result[0], ds.z[ds.mr>0.8], color='C2')
-#    ax[1].plot(result[4]*result[0], ds.z[ds.mr>0.8], color='C3')
-#    ax[1].plot(result[5]*result[0], ds.z[ds.mr>0.8], color='C4')
-#    ax[1].plot(result[6]*result[0], ds.z[ds.mr>0.8], color='C5')
-#    # ax[1].plot(result[0], ds.z, ls=ls[i], color='k', label='Total {}'.format(sza[i]))
-#    ax[1].set(xlabel = 'Concentration / $cm^{-3}$',
-#              ylabel = 'z',
-#              title = 'contribution to singlet delta',
-#              xlim = (1e-5, 1e11),
-#              ylim = (60e3, 100e3))
-#    ax[1].set_xscale('log')
-#    plt.legend(['$O_3$', '$O_2$', '$g_A$',  '$g_B$', '$g_{IRA}$', 'Barth'])
-#    
+if __name__ == '__main__':    
+    path = '/home/anqil/Documents/osiris_database/iris_ver_o3/'
+    #file = 'o3_{}{}_5p1_o3false.nc'
+    file = 'o3_{}{}_mr08_o3false.nc'.format(2007,11)
+    #file = 'test_with_mr_bound.nc'
+    ds = xr.open_dataset(path+file)
+    ds = ds.isel(mjd=1)
+    # load climatology
+    path = '/home/anqil/Documents/osiris_database/ex_data/'
+    file = 'msis_cmam_climatology_z200_lat8576.nc'
+    clima = xr.open_dataset(path+file)#.interp(z=z*1e-3)
+    clima = clima.update({'m':(clima.o + clima.o2 + clima.n2)*1e-6}) #cm-3
+    clima = clima.sel(month=8)
+    o3_clima = clima.o3_vmr * clima.m #cm-3
+    
+    T_a = clima.T.interp(lat=ds.latitude, z=ds.z[ds.mr>0.8]*1e-3)
+    m_a = clima.m.interp(lat=ds.latitude, z=ds.z[ds.mr>0.8]*1e-3)
+    p_a = clima.p.interp(lat=ds.latitude, z=ds.z[ds.mr>0.8]*1e-3) 
+    
+    sol_zen = ds.sza.item()
+    o2delta = cal_o2delta_new(ds.o3[ds.mr>0.8].data, T_a.data, m_a.data, ds.z[ds.mr>0.8],
+                                            sol_zen, p_a.data)[0]
+    A_o2delta = 2.23e-4
+    o2delta_ver = o2delta * A_o2delta
+    plt.figure()
+    plt.semilogx(o2delta_ver, ds.z[ds.mr>0.8], '.', label='problem o3 VER')
+    plt.semilogx(ds.ver, ds.z, '-')
+    
+    
+    result = cal_o2delta_new(ds.o3[ds.mr>0.8].values, T_a.data, m_a.data, 
+                             ds.z[ds.mr>0.8], sol_zen, p_a.data)
+    fig, ax = plt.subplots(nrows=1, ncols=2, sharey=True, figsize=(15,5))
+    ax[1].plot(result[1]*result[0], ds.z[ds.mr>0.8], color='C0')
+    ax[1].plot(result[2]*result[0], ds.z[ds.mr>0.8], color='C1')
+    ax[1].plot(result[3]*result[0], ds.z[ds.mr>0.8], color='C2')
+    ax[1].plot(result[4]*result[0], ds.z[ds.mr>0.8], color='C3')
+    ax[1].plot(result[5]*result[0], ds.z[ds.mr>0.8], color='C4')
+    ax[1].plot(result[6]*result[0], ds.z[ds.mr>0.8], color='C5')
+    # ax[1].plot(result[0], ds.z, ls=ls[i], color='k', label='Total {}'.format(sza[i]))
+    ax[1].set(xlabel = 'Concentration / $cm^{-3}$',
+              ylabel = 'z',
+              title = 'contribution to singlet delta',
+              xlim = (1e-5, 1e11),
+              ylim = (60e3, 100e3))
+    ax[1].set_xscale('log')
+    plt.legend(['$O_3$', '$O_2$', '$g_A$',  '$g_B$', '$g_{IRA}$', 'Barth'])
+    

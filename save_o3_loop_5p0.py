@@ -79,7 +79,7 @@ def fit_ozone(i):
 
 #%% load oem data
 year = 2008
-month = 1
+month = 6
 
 path = '/home/anqil/Documents/osiris_database/iris_ver_o3/'
 filenames = 'ver_{}{}_v5p0.nc'.format(year, str(month).zfill(2))
@@ -125,7 +125,9 @@ ds = xr.Dataset({'o3': o3_iris,
                 'o2delta':(['mjd', 'z'], 
                                   np.stack([result[i][6] for i in range(len(result))])),
                 'datetime':(['mjd'], num2date(mjd,units))
-                })
+                }, attrs={'ozone fitting':
+                    '''correction on negative ozone in forward model, 
+                        only select mr>0.8 in VER data.'''})
                 
 ##%%
 #plt.rcParams.update({'font.size': 14})

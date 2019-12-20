@@ -32,8 +32,9 @@ file = '/home/anqil/Documents/osiris_database/ir_stray_light_corrected.nc'
 ir = xr.open_dataset(file)
 #orbit = 37580
 #ir = ir.where(ir.orbit==orbit, drop=True)
-orbit_index = 45
-ir = ir.where(ir.orbit==np.unique(ir.orbit)[orbit_index], drop=True)
+orbit_index = 105#45
+orbit_no = np.unique(ir.orbit)[orbit_index]
+ir = ir.where(ir.orbit==orbit_no, drop=True)
 #print(num2date(ir.mjd,units))
 ir_fullorbit = ir
 day_mjd_lst = ir.mjd[ir.sza<90]
@@ -53,12 +54,21 @@ ax[1].axhline(y=90)
 ax[0].axvline(x=ir.mjd[828])
 
 #%% load IRIS result
-file = '/home/anqil/Documents/osiris_database/iris_ver_o3/ver_200801_v5p0.nc'
-ds = xr.open_dataset(file)
+file = '/home/anqil/Documents/osiris_database/iris_ver_o3/semi-old/{}{}_v5.nc'
+ds = xr.open_dataset(file.format(num2date(day_mjd_lst, units)[0].year,
+                                 str(num2date(day_mjd_lst, units)[0].month).zfill(2)))
 data_iris = ds.sel(mjd=slice(day_mjd_lst[0], day_mjd_lst[-1]))
 #data_iris['z'] = data_iris.z*1e-3 # to km 
 
-mr_threshold = 0.8
+#%% load IRIS result from 2 files
+file = '/home/anqil/Documents/osiris_database/iris_ver_o3/ver_{}{}_v5p0.nc'
+ds1 = xr.open_dataset(file.format(num2date(day_mjd_lst, units)[0].year,
+                                 str(num2date(day_mjd_lst, units)[0].month).zfill(2))) 
+file = '/home/anqil/Documents/osiris_database/iris_ver_o3/o3_{}{}_mr08_o3false.nc'
+ds2 = xr.open_dataset(file.format(num2date(day_mjd_lst, units)[0].year,
+                                 str(num2date(day_mjd_lst, units)[0].month).zfill(2))) 
+data_iris = ds1.merge(ds2)
+data_iris = data_iris.sel(mjd=slice(day_mjd_lst[0], day_mjd_lst[-1]))
 
 #%% load smr data (needed to be interpolated)
 path = '/home/anqil/Documents/osiris_database/ex_data/'
@@ -69,7 +79,7 @@ data_smr = data_smr.where(data_smr.mjd<ir.mjd[-1], drop=True)
 data_smr['altitude'] = data_smr.altitude*1e-3 # to km
 data_smr['alt'] = data_smr.alt *1e-3 # to km
 #data_smr = data_smr.assign_coords(z=data_smr.altitude[0,:].values) #temp
-
+mr_threshold = 0.8
 o3_vmr_smr = data_smr.o3_vmr.where(data_smr.mr>mr_threshold)
 Av = 6.023e23 #Avogadro's number: molec/mol
 R = 8.31 # gas constant: J/mol/K
@@ -81,8 +91,8 @@ path = '/home/anqil/Documents/osiris_database/odin-osiris.usask.ca/Level2/CCI/OS
 file = path+'ESACCI-OZONE-L2-LP-OSIRIS_ODIN-SASK_V5_10_HARMOZ_ALT-{}{}-fv0002.nc'.format(
         num2date(ir.mjd[0], units).year, str(num2date(ir.mjd[0], units).month).zfill(2))
 data_os = xr.open_dataset(file)
-data_os = data_os.sel(time=slice(data_os.sel(time=num2date(ir.mjd[0],units), method='nearest').time, 
-                                 data_os.sel(time=num2date(ir.mjd[-1],units), method='nearest').time))
+data_os = data_os.sel(time=slice(data_os.sel(time=num2date(day_mjd_lst[0],units), method='nearest').time, 
+                                 data_os.sel(time=num2date(day_mjd_lst[-1],units), method='nearest').time))
 
 data_os = data_os.update({'mjd': (['time'], Time(data_os.time, format='datetime64').mjd)}).swap_dims({'time':'mjd'})
 o3_os = data_os.ozone_concentration * Av*1e-6 #molec cm-3
@@ -93,7 +103,7 @@ o3_vmr_os_error = o3_os_error / m_os
 
 #%% load climatology
 path = '/home/anqil/Documents/osiris_database/ex_data/'
-file = 'msis_cmam_climatology.nc'
+file = 'msis_cmam_climatology_z200_lat8576.nc'
 clima = xr.open_dataset(path+file)#.interp(z=z*1e-3)
 clima = clima.update({'m':(clima.o + clima.o2 + clima.n2)*1e-6}) #cm-3
 o3_clima = clima.o3_vmr * clima.m #cm-3
@@ -108,7 +118,7 @@ ax2 = fig.add_subplot(gs[1])
 
 data_iris.ver.where(data_iris.mr>0.8, drop=True).plot(ax=ax1, y='z', 
                    robust=True, 
-                  norm=LogNorm(vmin=1e4, vmax=1e7),
+                  norm=LogNorm(vmin=1e5, vmax=1e6),
                   cbar_kwargs={'label':'VER / ($cm^{-3}$ $s^{-1}$)'})
 idx = [40, 570, 915, 1250]
 for i in idx:
@@ -129,7 +139,7 @@ ax11.set_xticklabels(np.round(data_iris.longitude.interp(
         mjd=ax1.get_xticks(), kwargs={'fill_value': 'extrapolate'}).values, 1))
 
 
-data_iris.ver.where(data_iris.mr>0.8, drop=True).isel(mjd=idx).plot.line(
+data_iris.ver.where(data_iris.mr>mr_threshold, drop=True).isel(mjd=idx).plot.line(
         ax=ax2, y='z', xscale='log', marker='.', add_legend=False)
 #ax2.legend(['Image 1', 'Image 2', 'Image 3', 'Image 4'])
 ax2.legend(['Im {}'.format(i) for i in idx])
@@ -142,15 +152,15 @@ ax2.set_xlim([1e3, 1e7])
 
 plt.rcParams.update({'font.size': 14})
 plt.show()
-fig.savefig('/home/anqil/Documents/reportFigure/article2/iris_ver_sample.png',
-            bbox_inches = "tight")
+#fig.savefig('/home/anqil/Documents/reportFigure/article2/iris_ver_sample_{}.png'.format(orbit_no),
+#            bbox_inches = "tight")
 
 #%% plot measurement response
-fig = plt.figure()
-data_iris.mr_rel.isel(mjd=idx).plot.line(y='z',marker='.', add_legend=False)
-plt.gca().set(xlabel='relative measurement response',
-               ylabel='Altitude / km')
-plt.legend(['Im {}'.format(i) for i in idx])
+#fig = plt.figure()
+#data_iris.mr_rel.isel(mjd=idx).plot.line(y='z',marker='.', add_legend=False)
+#plt.gca().set(xlabel='relative measurement response',
+#               ylabel='Altitude / km')
+#plt.legend(['Im {}'.format(i) for i in idx])
 
 
 #%%
@@ -168,12 +178,12 @@ i_mjd = day_mjd_lst[i]
 
 fig = plt.figure(figsize=(15,10))
 ax0 = fig.add_subplot(grid_2d[0,:])
-ax1 = fig.add_subplot(grid_2d[1,:],  sharey=ax0)
+ax1 = fig.add_subplot(grid_2d[1,:], sharey=ax0)
 ax2 = fig.add_subplot(grid_1d[2,0])
-ax3 = fig.add_subplot(grid_1d[2,1])
+ax3 = fig.add_subplot(grid_1d[2,1], sharey=ax2)
 
-cmap = 'ocean_r'
-vmin = 1e6
+cmap = 'RdBu_r'#'twilight_shifted'#'RdBu_r'
+vmin = 1e7
 vmax=1e13
 
 ax0.pcolor(np.tile(data_smr.mjd,(len(data_smr.z),1)),
@@ -181,13 +191,13 @@ ax0.pcolor(np.tile(data_smr.mjd,(len(data_smr.z),1)),
            o3_smr.T, 
            norm=LogNorm(vmin=vmin, vmax=vmax),
            cmap=cmap)
-ax0.axvline(x = data_smr.sel(mjd=i_mjd, method='nearest').mjd, color='r')
+ax0.axvline(x = data_smr.sel(mjd=i_mjd, method='nearest').mjd, color='k')
 ax0.set(ylim=[20, 100], 
         xlim=[data_smr.mjd[0], data_smr.mjd[-1]],
 #        title='SMR',
         ylabel='Altitude / km')
 ax0.set_xticklabels([])
-ax0.text(0.3, 0.87, 'SMR', fontsize=18, transform=ax0.transAxes)
+ax0.text(0.25, 0.87, 'SMR', fontsize=18, transform=ax0.transAxes)
 
 im = ax1.pcolor(day_mjd_lst,
                 data_iris.z, 
@@ -200,15 +210,15 @@ im = ax1.pcolor(day_mjd_lst,
 
 o3_os[1:].plot(y='altitude', ax=ax1, norm=LogNorm(vmin=vmin, vmax=vmax), 
            cmap=cmap, add_colorbar=False)
-ax1.axvline(x=data_iris.sel(mjd=i_mjd, method='nearest').mjd, color='r', ymin=0.5)
-ax1.axvline(x=data_os.sel(mjd=i_mjd, method='nearest').mjd, color='r', ymax=0.5)
+ax1.axvline(x=data_iris.sel(mjd=i_mjd, method='nearest').mjd, color='k', ymin=0.5)
+ax1.axvline(x=data_os.sel(mjd=i_mjd, method='nearest').mjd, color='k', ymax=0.5)
 ax1.set(ylim=[10,100],
         xlim=[data_smr.mjd[0], data_smr.mjd[-1]],
         #title='OS (z<60 km) + IRIS (z>60 km) ',
         ylabel='Altitude / km',
         xlabel='Latitude / degree N')
-ax1.text(0.3, 0.7, 'IRIS', fontsize=18, transform=ax1.transAxes)
-ax1.text(0.3, 0.3, 'OS', fontsize=18, transform=ax1.transAxes)
+ax1.text(0.01, 0.7, 'IRIS', fontsize=18, transform=ax1.transAxes)
+ax1.text(0.02, 0.3, 'OS', fontsize=18, transform=ax1.transAxes)
 ax1.set_xticklabels(np.round(data_smr.latitude.interp(
         mjd=ax1.get_xticks(), kwargs={'fill_value': 'extrapolate'}).values, 1))
 ax11 = ax1.twiny()
@@ -222,17 +232,20 @@ ax11.set_xticklabels(np.round(data_smr.longitude.interp(
 
 fig.colorbar(im, ax=[ax0,ax1, ax2,ax3], label='Ozone number density /cm-3')
 
-#ax2.semilogx(clima.m.interp(month=num2date(i_mjd, units).month, 
-#                            lat=data_iris.latitude.sel(mjd=i_mjd)), clima.z, 'k--', label='Clima')
+
 ax2.semilogx(o3_os.sel(mjd=i_mjd, method='nearest'), 
              data_os.altitude, '*',
               label='OS')
 ax2.semilogx(data_iris.o3.where(data_iris.mr>mr_threshold).sel(mjd=i_mjd, method='nearest'),
              data_iris.z, '*', 
-              label='IRIS (mr>{})'.format(mr_threshold))
+              label='IRIS')# (mr>{})'.format(mr_threshold))
 ax2.semilogx(o3_smr.sel(mjd=i_mjd, method='nearest'), 
              data_smr.altitude.sel(mjd=i_mjd, method='nearest'), '*',
-              label='SMR (mr>{})'.format(mr_threshold))
+              label='SMR')# (mr>{})'.format(mr_threshold))
+#ax2.semilogx(o3_clima.sel(lat=data_iris.sel(mjd=i_mjd, method='nearest').latitude, 
+#                          month=num2date(i_mjd, units).month, 
+#                          lst=data_iris.sel(mjd=i_mjd, method='nearest').lst, 
+#                          method='nearest'), o3_clima.z)
 
 ax2.set_xlim(left=1e4, right=1e13)
 ax2.set(#title='Number density',
@@ -244,17 +257,20 @@ ax2.legend(loc='lower left')
 m_iris = interp1d(data_smr.altitude.sel(mjd=i_mjd, method='nearest'), 
                  data_smr.density.sel(mjd=i_mjd, method='nearest'),
                 fill_value="extrapolate")(data_iris.z)
-#ax3.semilogx(data_smr.o3_vmr_a.sel(mjd=i_mjd, method='nearest')*1e6, 
-#             data_smr.altitude.sel(mjd=i_mjd, method='nearest'), 'k--')
+
 ax3.semilogx(o3_vmr_os.sel(mjd=i_mjd, method='nearest')*1e6,
              data_os.altitude, '*',
              label='OS')
 ax3.semilogx(data_iris.o3.where(data_iris.mr>mr_threshold).sel(
              mjd=i_mjd, method='nearest')/m_iris*1e6, data_iris.z, '*',
-             label='IRIS (mr>{})'.format(mr_threshold))
+             label='IRIS')# (mr>{})'.format(mr_threshold))
 ax3.semilogx(o3_vmr_smr.sel(mjd=i_mjd, method='nearest')*1e6, 
              data_smr.altitude.sel(mjd=i_mjd, method='nearest'), '*',
-             label='SMR (mr>{})'.format(mr_threshold))
+             label='SMR')# (mr>{})'.format(mr_threshold))
+#ax3.semilogx((clima.o3_vmr*1e6).sel(lat=data_iris.sel(mjd=i_mjd, method='nearest').latitude, 
+#                                      month=num2date(i_mjd, units).month, 
+#                                      lst=data_iris.sel(mjd=i_mjd, method='nearest').lst, 
+#                                      method='nearest'), clima.z)
 ax3.set_yticklabels([])
 
 ax3.legend(loc='lower left')
@@ -262,6 +278,6 @@ ax3.set_xlim(left=1e-2, right=1e1)
 ax3.set(#title='volume mixing ratio',
           xlabel='VMR / ppmv')
   
-fig.savefig('/home/anqil/Documents/reportFigure/article2/ozone_compare.png',
+fig.savefig('/home/anqil/Documents/reportFigure/article2/ozone_compare_{}.png'.format(orbit_no),
             bbox_inches = "tight")
     
