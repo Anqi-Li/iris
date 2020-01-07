@@ -16,7 +16,8 @@ def test_fun(x, arg=()):
     y = np.array([x[0]**2 * x[1],
                   5 * x[0] + np.sin(x[1]),
                   x[0]**2 + x[1]**2 - 1,
-                  5*x[0]**2 + 21*x[1]**2 - 9
+                  5*x[0]**2 + 21*x[1]**2 - 9,
+                  x[0]*5+x[1]*8
                   ])
     return y, None
 
@@ -49,21 +50,24 @@ if __name__ == '__main__':
     m = (ds.o2+ds.n2+ds.o) * 1e-6 #cm-3
     o3 = ds.o3_vmr * m
     x = o3.isel(lst=0).values
-    dx = 1e-8 * x
+    dx = 1e-4 * x
 #    dx = 1e-8
-    args = (ds.T.values, m.values, ds.z.values,  30, ds.p.values)
-    result = jacobian_num(cal_o2delta_new, x, dx, args=args)
+    args = (ds.T.values, m.values, ds.z.values*1e3,  30, ds.p.values)
+    K = jacobian_num(cal_o2delta_new, x, dx, args=args)
 #    args = ds.T.values,
-#    result = jacobian_num(test_fun2, x, dx, args=args)
+#    K = jacobian_num(test_fun2, x, dx, args=args)
 
 #    plt.figure()
-#    plt.pcolormesh(result)
+#    plt.pcolormesh(K)
+    
     
     plt.figure()
-    plt.plot(result.T[:, ::10], ds.z) #plotting columns
+    plt.plot(K[:,60:100], ds.z) #plotting columns
+#    plt.plot(1e4*ds.T, ds.z, 'k-')
 #    plt.xlim([0, 7.5e6])
     plt.title('jacobian')
-    plt.xscale('log')
+#    plt.legend(ds.z[62:64].values)
+#    plt.xscale('log')
     
     plt.figure()
     plt.plot(x, ds.z, label='x')
@@ -71,27 +75,28 @@ if __name__ == '__main__':
     plt.legend()
     plt.title('x and x_perturb')
     plt.xscale('log')
+#    plt.ylim([50,75])
 
 #%%
-#if __name__ == '__main__':
-##    x = np.ones(2)
-#    x = np.array([1, 1000]).astype(float)
-##    dx = 1e-1
-#    dx = 1e-1 * x
+if __name__ == '__main__':
+#    x = np.ones(2)
+    x = np.array([1, 2]).astype(float)
+#    dx = 1e-1
+    dx = 1e-1 * x
+    
+    K = jacobian_num(test_fun, x, dx)
+    print(K)
 #    
-#    result = jacobian_num(test_fun, x, dx)
-#    print(result.round(0))
-##    
-#    true = np.array([[2*x[0]*x[1], x[0]**2],
-#                    [5, np.cos(x[1])],
-#                    [2*x[0], 2*x[1]],
-#                    [10*x[0], 42*x[1]]
-#                     ])
-#    print(true.round(0))   
-#    plt.figure()
-#    plt.plot(result)
-#    
-#    
-##    print(test_fun(x))
-##    print(true.dot(x))
+    true = np.array([[2*x[0]*x[1], x[0]**2],
+                    [5, np.cos(x[1])],
+                    [2*x[0], 2*x[1]],
+                    [10*x[0], 42*x[1]]
+                     ])
+    print(true)   
+    plt.figure()
+    plt.plot(np.arange(5), K)
+#    plt.plot(K, np.arange(5))
+    
+    print(test_fun(x))
+    print(true.dot(x))
     

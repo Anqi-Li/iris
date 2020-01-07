@@ -97,18 +97,18 @@ def f(i):
 
         alt_chop_cond = (altitude.isel(mjd=i)>bot) & (altitude.isel(mjd=i)<top) #select altitude range 
         if alt_chop_cond.sum() < 2:
-            print('wrong alt range ({}), month {}'.format(i, month[0]))
+            print('wrong alt range ({}), month {}'.format(i, month))
             pass
         elif l1.isel(mjd=i).notnull().sum() == 0:
-            print('l1 is all nan ({}), month {}'.format(i, month[0]))
+            print('l1 is all nan ({}), month {}'.format(i, month))
             pass
         elif error.isel(mjd=i).notnull().sum() == 0:
-            print('error is all nan ({}), month {}'.format(i, month[0]))
+            print('error is all nan ({}), month {}'.format(i, month))
             pass
         
         else:
             try:
-                print(i, 'out of', len(day_mjd_lst), 'in month ', month[0])
+                print(i, 'out of', len(day_mjd_lst), 'in month ', month)
 #                print('get VER')
         
                 o3_a = o3_clima.sel(lst=lst.isel(mjd=i),
@@ -191,7 +191,7 @@ if __name__ == '__main__':
     file = '/home/anqil/Documents/osiris_database/ir_stray_light_corrected.nc'
     ir = xr.open_dataset(file)
     #orbit = 37580
-    orbit_index = 45
+    orbit_index = 45# 105#45
     ir = ir.where(ir.orbit==np.unique(ir.orbit)[orbit_index], drop=True)
     #print(num2date(ir.mjd,units))
     ir_fullorbit = ir
@@ -218,6 +218,7 @@ if __name__ == '__main__':
     lst = ir.apparent_solar_time.sel(pixel=60).drop('pixel')
     l1 = ir.sel(pixel=slice(14, 128)).data
     error = ir.sel(pixel=slice(14, 128)).error
+    month = num2date(ir.mjd[0], units).month
     
     #%% load climatology
     path = '/home/anqil/Documents/osiris_database/ex_data/'
@@ -249,12 +250,12 @@ if __name__ == '__main__':
 #    result = []
 #    for i in range(len(day_mjd_lst)): 
 #        result.append(f(i))
-#    
+    index_lst = [609]#[570]
 #    index_lst = [251, 261, 8962, 13716, 24600]
 #    index_lst = [2190,  2192, 2194, 3313, 9349, 10562, 10662, 21947]
 #    index_lst = [56, 57]
 #    index_lst = list(range(256,260))
-    index_lst = [abs(day_mjd_lst - 54467.649017).argmin().item()]
+#    index_lst = [abs(day_mjd_lst - 54467.649017).argmin().item()]
     result = []
     for i in index_lst:
         result.append(f(i))
@@ -363,12 +364,14 @@ if __name__ == '__main__':
 #%%
     AVK_rel = result[0][-1]
     fig = plt.figure()
-    ds.mr_rel.plot.line(y='z', add_legend=False, color='k', ls='--')
-    plt.plot(AVK_rel, ds.z)
+    mr = ds.mr_rel.plot.line(y='z', add_legend=False, color='k', ls='--')
+    below = plt.plot(AVK_rel[:50:2, :].T, ds.z, color='C1')
+    above = plt.plot(AVK_rel[50::2, :].T, ds.z, color='C2')
 #    plt.title('relative averaging kernel, mesurement response')
     plt.ylabel('Altitude / km')
     plt.xlabel('$AVK_{frac}$ ')
-    plt.legend(['$MR_{frac}$']+ ['$AVKs_{frac}$'])
+    plt.legend(['$MR_{frac}$'] + ['$AVKs_{frac}$'])
+    plt.legend([mr[0], below[0], above[0]], ['$MR_{frac}$', '$AVK_{frac}$ below 100 km', '$AVK_{frac}$ above 100 km'])
 #    plt.legend(['$MR_{frac}$'] + ['{} km'.format(i) for i in (ds.z.values[::10]).astype(int)])
     plt.title('')
     fig.savefig('/home/anqil/Documents/reportFigure/article2/iris_AVK_MR_sample.png',

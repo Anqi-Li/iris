@@ -87,34 +87,34 @@ def interation(forward_fun, fit_fun, y, x_initial, forward_args=(), fit_args=())
         x_change = np.divide(abs(x_hat-x), abs(x_hat)) #check Patrick Sheese
         
         ########temp plotting ######################3
-#        print('evaluate ', n_evaluate)
-#        plt.figure(figsize=(10,3))
-#        plt.suptitle(n_evaluate)
-#
-#        plt.subplot(141)
-##        plt.plot(y,z, y_fit,z)
-##        plt.legend(['y org', 'y fitted'])
-#        plt.plot(residual/y_fit, np.arange(len(y)))
-#        plt.title('y - y_fit / y_fit')
-##        plt.xlim([-8e4, 0])
-#
-#        plt.subplot(142)
-#        plt.semilogx(x_change, np.arange(len(y)))
-#        plt.xlim([1e-10, 1e1])
-#        plt.title('x change')
-#
-#        plt.subplot(143)
-#        plt.plot(K, np.arange(len(y)))
-#        plt.title('K')
-#        plt.xlim([0, 1e-1])
-#
-#        plt.subplot(144)
-#        plt.semilogx(x, np.arange(len(y)))
-#        plt.semilogx(x_hat, np.arange(len(y)))
-#        plt.title('x_hat')
-#        plt.xlim([1e6, 1e10])
-#        
-#        plt.show()
+        print('evaluate ', n_evaluate)
+        plt.figure(figsize=(10,3))
+        plt.suptitle(n_evaluate)
+
+        plt.subplot(141)
+#        plt.plot(y,z, y_fit,z)
+#        plt.legend(['y org', 'y fitted'])
+        plt.plot(residual/y_fit, np.arange(len(y)))
+        plt.title('y - y_fit / y_fit')
+#        plt.xlim([-8e4, 0])
+
+        plt.subplot(142)
+        plt.semilogx(x_change, np.arange(len(y)))
+        plt.xlim([1e-10, 1e1])
+        plt.title('x change')
+
+        plt.subplot(143)
+        plt.plot(K, np.arange(len(y)))
+        plt.title('K')
+        plt.xlim([0, 1e-1])
+
+        plt.subplot(144)
+        plt.semilogx(x, np.arange(len(y)))
+        plt.semilogx(x_hat, np.arange(len(y)))
+        plt.title('x_hat')
+        plt.xlim([1e6, 1e10])
+        
+        plt.show()
         ###############################3
         
         x = x_hat
@@ -127,7 +127,7 @@ def interation(forward_fun, fit_fun, y, x_initial, forward_args=(), fit_args=())
 
 #%% load ver data
 year = 2008
-month = 2
+month = 3
 
 path = '/home/anqil/Documents/osiris_database/iris_ver_o3/'
 filenames = 'ver_{}{}_v5p0.nc'.format(year, str(month).zfill(2))
@@ -156,6 +156,7 @@ def fit(y, K, fit_args):
 
 #%%
 def loop_over_images(i):
+    
     try:
         print('image', i, ' in month ', month)
         y_org = data.ver.isel(mjd=i).where(data.mr_rel.isel(mjd=i)>0.8, drop=True).values
@@ -175,7 +176,7 @@ def loop_over_images(i):
                         data.sza.isel(mjd=i).values, #degree
                         clima.p.sel(lat=data.latitude.isel(mjd=i), #Pa
                                     method='nearest').interp(z=z_org).values,
-                        False) #m
+                        True) #m
         xa = x_initial
         Sa = np.diag((1*xa)**2)
         Se = np.diag(data.ver_error.isel(mjd=i).where(data.mr_rel.isel(mjd=i)>0.8, drop=True))
@@ -194,9 +195,10 @@ def loop_over_images(i):
         pass
     
 #%%
-#image_lst = [15, 19, 33, 42, 94]
+#image_lst = [3986,3969]
+image_lst = [15, 33, 42]
 result=[]
-for i in range(len(data.mjd)):#image_lst: #range(100):
+for i in image_lst:#range(len(data.mjd)):#image_lst: #range(100):
     result.append(loop_over_images(i))
   
 result = [i for i in result if i] 
@@ -232,8 +234,8 @@ ds = xr.Dataset({'o3': o3_iris,
                 })    
                     
 #%%
-path = '/home/anqil/Documents/osiris_database/iris_ver_o3/'
-ds.to_netcdf(path+'o3_{}{}_v6p0.nc'.format(year, str(month).zfill(2)))
+#path = '/home/anqil/Documents/osiris_database/iris_ver_o3/'
+#ds.to_netcdf(path+'o3_{}{}_v6p0.nc'.format(year, str(month).zfill(2)))
 
 #%%
 #y_org = data.ver.isel(mjd=0).where(data.mr_rel.isel(mjd=0)>0.8, drop=True).values

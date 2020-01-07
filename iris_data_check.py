@@ -13,8 +13,8 @@ from matplotlib.colors import LogNorm
 from astropy.time import Time
 
 #%%
-year = [2007]
-month = [11]
+year = [2008]
+month = [3]
 
 #%% load iris ver
 path = '/home/anqil/Documents/osiris_database/iris_ver_o3/'
@@ -26,15 +26,17 @@ data_ver = data_ver.assign_coords(latitude = data_ver.latitude,
 
 #%% load iris o3
 path = '/home/anqil/Documents/osiris_database/iris_ver_o3/'
-filenames = 'o3_{}{}_mr08_o3false.nc'
+#filenames = 'o3_{}{}_mr08_o3false.nc'
 #filenames = 'o3_{}{}_5p1_o3false_posVER.nc'
+filenames = 'o3_{}{}_v6p0.nc'
 files = [path+filenames.format(year[i], str(month[i]).zfill(2)) for i in range(len(month))]
 data_o3 = xr.open_mfdataset(files)
-data_o3 = data_o3.where(data_o3.status!=0, drop=True)
+#data_o3 = data_o3.where(data_o3.status!=0, drop=True)
 data_o3 = data_o3.assign_coords(latitude = data_ver.latitude.sel(mjd=data_o3.mjd), 
                                         longitude = data_ver.longitude.sel(mjd=data_o3.mjd))    
 
-o3_filter = np.logical_and(data_o3.o3.sel(z=90)<1e9, data_o3.cost_lsq<1e0)
+#o3_filter = np.logical_and(data_o3.o3.sel(z=90)<1e9, data_o3.cost_lsq<1e0)
+o3_filter = (data_o3.status == 0)
 
 #%% merge ver and o3 data
 data_iris = data_o3.merge(data_ver)

@@ -32,7 +32,7 @@ file = '/home/anqil/Documents/osiris_database/ir_stray_light_corrected.nc'
 ir = xr.open_dataset(file)
 #orbit = 37580
 #ir = ir.where(ir.orbit==orbit, drop=True)
-orbit_index = 105#45
+orbit_index = 45#105#45
 orbit_no = np.unique(ir.orbit)[orbit_index]
 ir = ir.where(ir.orbit==orbit_no, drop=True)
 #print(num2date(ir.mjd,units))

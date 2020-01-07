@@ -108,7 +108,7 @@ def gIRA (pres, sol_zen):
 
 #%% A band
 def gA (pres,sol_zen):
-    #pressure in Pa. solar zenith angle in degreea
+    #pressure in Pa. solar zenith angle in degree
     d2r=np.pi/180
     
     logp85corr=np.array([-7,
@@ -199,7 +199,7 @@ def gA (pres,sol_zen):
 
 #%% B band
 def gB (pres,sol_zen):
-    #pressure in Pa. solar zenith angle in degreea
+    #pressure in Pa. solar zenith angle in degree
     d2r=np.pi/180
     
     logp85corr=np.array([-5.51677832e+00, -5.47384432e+00, -5.43035414e+00, -5.38628065e+00,
@@ -292,103 +292,103 @@ def gB (pres,sol_zen):
     return g
 
 #%%
+#wavelength in nm
+wave=np.array([  7.5     ,  12.5     ,  17.5     ,  22.5     ,  27.5     ,
+        32.5     ,  37.5     ,  42.5     ,  47.5     ,  52.5     ,
+        57.5     ,  62.5     ,  67.5     ,  72.5     ,  77.5     ,
+        82.5     ,  87.5     ,  92.5     ,  97.5     , 102.5     ,
+       117.30308 , 117.30308 , 117.99515 , 118.69541 , 119.40404 ,
+       120.121215, 120.84701 , 121.567   , 121.58166 , 122.325295,
+       123.078095, 123.8402  , 124.6118  , 125.39308 , 126.18424 ,
+       126.98542 , 127.796815, 128.61868 , 129.451215, 130.294525,
+       131.148975, 132.014615, 132.891815, 133.780745, 134.68167 ,
+       135.59476 , 136.52035 , 137.458665, 138.409945, 139.866985,
+       141.85112 , 143.89232 , 145.99316 , 148.156265, 150.384425,
+       152.680675, 155.0481  , 157.49008 , 160.01026 , 162.612365,
+       165.300535, 168.079115, 170.952645, 173.16342 , 174.6758  ,
+       176.214875, 177.781315, 179.37579 , 180.99919 , 182.65222 ,
+       184.335695, 186.050545, 187.797575, 189.577695, 191.391945,
+       193.24123 , 195.126615, 197.0491  , 199.0099  , 201.0101  ,
+       203.050915, 205.133585, 207.259465, 209.42981 , 211.64613 ,
+       213.90988 , 216.22255 , 218.58576 , 221.00121 , 223.47065 ,
+       225.995915, 228.57888 , 231.22162 , 233.92611 , 236.69467 ,
+       239.52953 , 242.43317 , 245.40799 , 248.4568  , 251.58228 ,
+       254.78743 , 258.07528 , 261.449095, 264.912285, 268.468485,
+       272.12145 , 275.87519 , 279.73397 , 283.702195, 287.784685,
+       291.986375, 296.31253 , 300.7689  , 305.361305, 310.09615 ,
+       315.      , 320.      , 325.      , 330.      , 335.      ,
+       340.      , 345.      , 350.      , 355.      , 360.      ]) 
+#cross section in cm2
+so2=np.array([1.180e-18, 3.610e-18, 7.270e-18, 1.050e-17, 1.365e-17, 1.795e-17,
+       1.817e-17, 1.939e-17, 2.159e-17, 2.406e-17, 2.504e-17, 2.602e-17,
+       2.627e-17, 2.905e-17, 2.709e-17, 2.087e-17, 9.850e-18, 1.554e-17,
+       1.653e-17, 1.100e-18, 2.000e-20, 1.250e-18, 2.550e-19, 3.000e-20,
+       3.750e-19, 4.450e-18, 8.350e-18, 1.000e-20, 6.000e-19, 2.350e-19,
+       4.500e-19, 3.350e-19, 1.750e-17, 8.950e-19, 4.300e-19, 1.100e-19,
+       2.050e-19, 4.430e-19, 5.550e-19, 4.200e-19, 6.850e-19, 1.450e-18,
+       2.250e-18, 2.300e-18, 4.550e-18, 7.230e-18, 9.500e-18, 1.230e-17,
+       1.320e-17, 1.360e-17, 1.400e-17, 1.480e-17, 1.410e-17, 1.290e-17,
+       1.150e-17, 9.910e-18, 8.240e-18, 6.580e-18, 4.970e-18, 3.450e-18,
+       2.080e-18, 1.230e-18, 7.220e-19, 4.580e-19, 2.740e-19, 0.000e+00,
+       0.000e+00, 0.000e+00, 0.000e+00, 0.000e+00, 0.000e+00, 0.000e+00,
+       0.000e+00, 0.000e+00, 0.000e+00, 0.000e+00, 0.000e+00, 0.000e+00,
+       0.000e+00, 0.000e+00, 0.000e+00, 0.000e+00, 6.620e-24, 6.260e-24,
+       5.840e-24, 5.370e-24, 4.890e-24, 4.390e-24, 3.890e-24, 3.400e-24,
+       2.940e-24, 2.490e-24, 2.090e-24, 1.720e-24, 1.400e-24, 1.120e-24,
+       8.790e-25, 6.760e-25, 0.000e+00, 0.000e+00, 0.000e+00, 0.000e+00,
+       0.000e+00, 0.000e+00, 0.000e+00, 0.000e+00, 0.000e+00, 0.000e+00,
+       0.000e+00, 0.000e+00, 0.000e+00, 0.000e+00, 0.000e+00, 0.000e+00,
+       0.000e+00, 0.000e+00, 0.000e+00, 0.000e+00, 0.000e+00, 0.000e+00,
+       0.000e+00, 0.000e+00, 0.000e+00, 0.000e+00, 0.000e+00])
+so3=np.array([0.00e+00, 0.00e+00, 0.00e+00, 0.00e+00, 0.00e+00, 0.00e+00,
+       0.00e+00, 0.00e+00, 0.00e+00, 0.00e+00, 0.00e+00, 0.00e+00,
+       0.00e+00, 0.00e+00, 0.00e+00, 0.00e+00, 0.00e+00, 0.00e+00,
+       0.00e+00, 0.00e+00, 7.80e-18, 7.97e-18, 8.66e-18, 9.51e-18,
+       1.25e-17, 1.84e-17, 2.19e-17, 2.32e-17, 2.30e-17, 2.26e-17,
+       2.06e-17, 1.30e-17, 8.91e-18, 7.24e-18, 6.09e-18, 5.66e-18,
+       5.87e-18, 6.47e-18, 8.14e-18, 1.24e-17, 1.52e-17, 1.47e-17,
+       1.51e-17, 1.51e-17, 1.65e-17, 1.54e-17, 1.35e-17, 1.05e-17,
+       7.97e-18, 7.17e-18, 6.28e-18, 5.66e-18, 5.23e-18, 4.47e-18,
+       3.69e-18, 2.93e-18, 2.19e-18, 1.63e-18, 1.20e-18, 9.77e-19,
+       8.66e-19, 8.14e-19, 8.17e-19, 8.57e-19, 8.40e-19, 8.11e-19,
+       7.99e-19, 7.86e-19, 7.63e-19, 7.29e-19, 6.88e-19, 6.40e-19,
+       5.88e-19, 5.31e-19, 4.80e-19, 4.38e-19, 4.11e-19, 3.69e-19,
+       3.30e-19, 3.26e-19, 3.26e-19, 3.51e-19, 4.11e-19, 4.84e-19,
+       6.26e-19, 8.57e-19, 1.17e-18, 1.52e-18, 1.97e-18, 2.55e-18,
+       3.24e-18, 4.00e-18, 4.83e-18, 5.79e-18, 6.86e-18, 7.97e-18,
+       9.00e-18, 1.00e-17, 1.08e-17, 1.13e-17, 1.15e-17, 1.12e-17,
+       1.06e-17, 9.59e-18, 8.31e-18, 6.89e-18, 5.35e-18, 3.91e-18,
+       2.67e-18, 1.73e-18, 1.04e-18, 5.85e-19, 3.16e-19, 1.66e-19,
+       8.67e-20, 5.01e-20, 2.49e-20, 1.20e-20, 6.17e-21, 2.74e-21,
+       1.17e-21, 5.88e-22, 2.66e-22, 1.09e-22, 5.49e-23])
+#solar irradiance in cm-2s-1 per nm???
+irrad  = np.array([1.00e+09, 1.30e+09, 4.10e+09, 4.80e+09, 7.51e+09, 4.31e+09,
+       1.53e+09, 1.09e+09, 1.21e+09, 1.23e+09, 8.70e+08, 9.60e+08,
+       4.50e+08, 3.40e+08, 1.89e+09, 3.92e+09, 9.77e+09, 7.94e+09,
+       3.34e+09, 4.71e+09, 1.03e+08, 2.66e+08, 1.12e+08, 1.24e+08,
+       1.82e+08, 1.90e+08, 7.40e+08, 3.82e+11, 2.28e+09, 3.67e+09,
+       1.36e+09, 1.61e+09, 1.32e+09, 1.41e+09, 3.11e+09, 1.06e+09,
+       1.37e+09, 1.02e+09, 1.14e+09, 7.29e+09, 2.20e+09, 1.59e+09,
+       2.21e+09, 1.24e+10, 1.99e+09, 3.09e+09, 2.57e+09, 2.74e+09,
+       3.10e+09, 7.60e+09, 1.01e+10, 1.30e+10, 1.82e+10, 2.33e+10,
+       2.66e+10, 2.90e+10, 3.60e+10, 4.75e+10, 6.40e+10, 5.49e+10,
+       1.19e+11, 1.76e+11, 2.32e+11, 1.44e+11, 1.83e+11, 1.74e+11,
+       2.10e+11, 2.38e+11, 3.04e+11, 3.19e+11, 2.93e+11, 3.62e+11,
+       4.73e+11, 5.61e+11, 6.63e+11, 6.90e+11, 9.56e+11, 1.15e+12,
+       1.27e+12, 1.52e+12, 1.78e+12, 2.20e+12, 2.69e+12, 4.54e+12,
+       7.14e+12, 8.35e+12, 8.39e+12, 1.08e+13, 1.18e+13, 1.60e+13,
+       1.34e+13, 1.41e+13, 1.57e+13, 1.38e+13, 1.60e+13, 1.45e+13,
+       2.20e+13, 1.99e+13, 1.97e+13, 1.94e+13, 2.91e+13, 4.95e+13,
+       4.53e+13, 1.07e+14, 1.20e+14, 1.10e+14, 1.04e+14, 8.24e+13,
+       1.52e+14, 2.15e+14, 3.48e+14, 3.40e+14, 3.22e+14, 4.23e+14,
+       4.95e+14, 5.44e+14, 5.93e+14, 6.75e+14, 8.15e+14, 7.81e+14,
+       8.35e+14, 8.14e+14, 8.53e+14, 9.17e+14, 8.38e+14])
+
 from numba import jit
 #@jit(nopython = True, cache = True)
-def photolysis (z,sol_zen,o2,o3):
+def photolysis (z, sol_zen, o2, o3):
     #z in m
     #o2, o3 in cm-3
-    #wavelength in nm
-    wave=np.array([  7.5     ,  12.5     ,  17.5     ,  22.5     ,  27.5     ,
-            32.5     ,  37.5     ,  42.5     ,  47.5     ,  52.5     ,
-            57.5     ,  62.5     ,  67.5     ,  72.5     ,  77.5     ,
-            82.5     ,  87.5     ,  92.5     ,  97.5     , 102.5     ,
-           117.30308 , 117.30308 , 117.99515 , 118.69541 , 119.40404 ,
-           120.121215, 120.84701 , 121.567   , 121.58166 , 122.325295,
-           123.078095, 123.8402  , 124.6118  , 125.39308 , 126.18424 ,
-           126.98542 , 127.796815, 128.61868 , 129.451215, 130.294525,
-           131.148975, 132.014615, 132.891815, 133.780745, 134.68167 ,
-           135.59476 , 136.52035 , 137.458665, 138.409945, 139.866985,
-           141.85112 , 143.89232 , 145.99316 , 148.156265, 150.384425,
-           152.680675, 155.0481  , 157.49008 , 160.01026 , 162.612365,
-           165.300535, 168.079115, 170.952645, 173.16342 , 174.6758  ,
-           176.214875, 177.781315, 179.37579 , 180.99919 , 182.65222 ,
-           184.335695, 186.050545, 187.797575, 189.577695, 191.391945,
-           193.24123 , 195.126615, 197.0491  , 199.0099  , 201.0101  ,
-           203.050915, 205.133585, 207.259465, 209.42981 , 211.64613 ,
-           213.90988 , 216.22255 , 218.58576 , 221.00121 , 223.47065 ,
-           225.995915, 228.57888 , 231.22162 , 233.92611 , 236.69467 ,
-           239.52953 , 242.43317 , 245.40799 , 248.4568  , 251.58228 ,
-           254.78743 , 258.07528 , 261.449095, 264.912285, 268.468485,
-           272.12145 , 275.87519 , 279.73397 , 283.702195, 287.784685,
-           291.986375, 296.31253 , 300.7689  , 305.361305, 310.09615 ,
-           315.      , 320.      , 325.      , 330.      , 335.      ,
-           340.      , 345.      , 350.      , 355.      , 360.      ]) 
-    #cross section in cm2
-    so2=np.array([1.180e-18, 3.610e-18, 7.270e-18, 1.050e-17, 1.365e-17, 1.795e-17,
-           1.817e-17, 1.939e-17, 2.159e-17, 2.406e-17, 2.504e-17, 2.602e-17,
-           2.627e-17, 2.905e-17, 2.709e-17, 2.087e-17, 9.850e-18, 1.554e-17,
-           1.653e-17, 1.100e-18, 2.000e-20, 1.250e-18, 2.550e-19, 3.000e-20,
-           3.750e-19, 4.450e-18, 8.350e-18, 1.000e-20, 6.000e-19, 2.350e-19,
-           4.500e-19, 3.350e-19, 1.750e-17, 8.950e-19, 4.300e-19, 1.100e-19,
-           2.050e-19, 4.430e-19, 5.550e-19, 4.200e-19, 6.850e-19, 1.450e-18,
-           2.250e-18, 2.300e-18, 4.550e-18, 7.230e-18, 9.500e-18, 1.230e-17,
-           1.320e-17, 1.360e-17, 1.400e-17, 1.480e-17, 1.410e-17, 1.290e-17,
-           1.150e-17, 9.910e-18, 8.240e-18, 6.580e-18, 4.970e-18, 3.450e-18,
-           2.080e-18, 1.230e-18, 7.220e-19, 4.580e-19, 2.740e-19, 0.000e+00,
-           0.000e+00, 0.000e+00, 0.000e+00, 0.000e+00, 0.000e+00, 0.000e+00,
-           0.000e+00, 0.000e+00, 0.000e+00, 0.000e+00, 0.000e+00, 0.000e+00,
-           0.000e+00, 0.000e+00, 0.000e+00, 0.000e+00, 6.620e-24, 6.260e-24,
-           5.840e-24, 5.370e-24, 4.890e-24, 4.390e-24, 3.890e-24, 3.400e-24,
-           2.940e-24, 2.490e-24, 2.090e-24, 1.720e-24, 1.400e-24, 1.120e-24,
-           8.790e-25, 6.760e-25, 0.000e+00, 0.000e+00, 0.000e+00, 0.000e+00,
-           0.000e+00, 0.000e+00, 0.000e+00, 0.000e+00, 0.000e+00, 0.000e+00,
-           0.000e+00, 0.000e+00, 0.000e+00, 0.000e+00, 0.000e+00, 0.000e+00,
-           0.000e+00, 0.000e+00, 0.000e+00, 0.000e+00, 0.000e+00, 0.000e+00,
-           0.000e+00, 0.000e+00, 0.000e+00, 0.000e+00, 0.000e+00])
-    so3=np.array([0.00e+00, 0.00e+00, 0.00e+00, 0.00e+00, 0.00e+00, 0.00e+00,
-           0.00e+00, 0.00e+00, 0.00e+00, 0.00e+00, 0.00e+00, 0.00e+00,
-           0.00e+00, 0.00e+00, 0.00e+00, 0.00e+00, 0.00e+00, 0.00e+00,
-           0.00e+00, 0.00e+00, 7.80e-18, 7.97e-18, 8.66e-18, 9.51e-18,
-           1.25e-17, 1.84e-17, 2.19e-17, 2.32e-17, 2.30e-17, 2.26e-17,
-           2.06e-17, 1.30e-17, 8.91e-18, 7.24e-18, 6.09e-18, 5.66e-18,
-           5.87e-18, 6.47e-18, 8.14e-18, 1.24e-17, 1.52e-17, 1.47e-17,
-           1.51e-17, 1.51e-17, 1.65e-17, 1.54e-17, 1.35e-17, 1.05e-17,
-           7.97e-18, 7.17e-18, 6.28e-18, 5.66e-18, 5.23e-18, 4.47e-18,
-           3.69e-18, 2.93e-18, 2.19e-18, 1.63e-18, 1.20e-18, 9.77e-19,
-           8.66e-19, 8.14e-19, 8.17e-19, 8.57e-19, 8.40e-19, 8.11e-19,
-           7.99e-19, 7.86e-19, 7.63e-19, 7.29e-19, 6.88e-19, 6.40e-19,
-           5.88e-19, 5.31e-19, 4.80e-19, 4.38e-19, 4.11e-19, 3.69e-19,
-           3.30e-19, 3.26e-19, 3.26e-19, 3.51e-19, 4.11e-19, 4.84e-19,
-           6.26e-19, 8.57e-19, 1.17e-18, 1.52e-18, 1.97e-18, 2.55e-18,
-           3.24e-18, 4.00e-18, 4.83e-18, 5.79e-18, 6.86e-18, 7.97e-18,
-           9.00e-18, 1.00e-17, 1.08e-17, 1.13e-17, 1.15e-17, 1.12e-17,
-           1.06e-17, 9.59e-18, 8.31e-18, 6.89e-18, 5.35e-18, 3.91e-18,
-           2.67e-18, 1.73e-18, 1.04e-18, 5.85e-19, 3.16e-19, 1.66e-19,
-           8.67e-20, 5.01e-20, 2.49e-20, 1.20e-20, 6.17e-21, 2.74e-21,
-           1.17e-21, 5.88e-22, 2.66e-22, 1.09e-22, 5.49e-23])
-    #solar irradiance
-    irrad  = np.array([1.00e+09, 1.30e+09, 4.10e+09, 4.80e+09, 7.51e+09, 4.31e+09,
-           1.53e+09, 1.09e+09, 1.21e+09, 1.23e+09, 8.70e+08, 9.60e+08,
-           4.50e+08, 3.40e+08, 1.89e+09, 3.92e+09, 9.77e+09, 7.94e+09,
-           3.34e+09, 4.71e+09, 1.03e+08, 2.66e+08, 1.12e+08, 1.24e+08,
-           1.82e+08, 1.90e+08, 7.40e+08, 3.82e+11, 2.28e+09, 3.67e+09,
-           1.36e+09, 1.61e+09, 1.32e+09, 1.41e+09, 3.11e+09, 1.06e+09,
-           1.37e+09, 1.02e+09, 1.14e+09, 7.29e+09, 2.20e+09, 1.59e+09,
-           2.21e+09, 1.24e+10, 1.99e+09, 3.09e+09, 2.57e+09, 2.74e+09,
-           3.10e+09, 7.60e+09, 1.01e+10, 1.30e+10, 1.82e+10, 2.33e+10,
-           2.66e+10, 2.90e+10, 3.60e+10, 4.75e+10, 6.40e+10, 5.49e+10,
-           1.19e+11, 1.76e+11, 2.32e+11, 1.44e+11, 1.83e+11, 1.74e+11,
-           2.10e+11, 2.38e+11, 3.04e+11, 3.19e+11, 2.93e+11, 3.62e+11,
-           4.73e+11, 5.61e+11, 6.63e+11, 6.90e+11, 9.56e+11, 1.15e+12,
-           1.27e+12, 1.52e+12, 1.78e+12, 2.20e+12, 2.69e+12, 4.54e+12,
-           7.14e+12, 8.35e+12, 8.39e+12, 1.08e+13, 1.18e+13, 1.60e+13,
-           1.34e+13, 1.41e+13, 1.57e+13, 1.38e+13, 1.60e+13, 1.45e+13,
-           2.20e+13, 1.99e+13, 1.97e+13, 1.94e+13, 2.91e+13, 4.95e+13,
-           4.53e+13, 1.07e+14, 1.20e+14, 1.10e+14, 1.04e+14, 8.24e+13,
-           1.52e+14, 2.15e+14, 3.48e+14, 3.40e+14, 3.22e+14, 4.23e+14,
-           4.95e+14, 5.44e+14, 5.93e+14, 6.75e+14, 8.15e+14, 7.81e+14,
-           8.35e+14, 8.14e+14, 8.53e+14, 9.17e+14, 8.38e+14])
-    
     @jit(nopython = True, cache = True)
     def path_z (z_top, z_t, sol_zen, nsteps):
         Re = 6375e3 #m
@@ -412,12 +412,10 @@ def photolysis (z,sol_zen,o2,o3):
         z_paths,path_step= path_z(z[-1],z_t,sol_zen,500)
         tau=(so2*(np.exp(np.interp(z_paths,z,np.log(o2)))).sum()+
              so3*(np.interp(z_paths,z,o3)).sum()) * path_step *1e2 #m-->cm 
-             
-#             so3*np.exp(np.interp(z_paths,z,np.log(o3))).sum()) * path_step *1e2 #m-->cm 
-             
-        jo2, jo3 = (irrad* (so2, so3) *np.exp(-tau))
-#        jo3=(irrad*so3*np.exp(-tau))
-        Jhart.append(jo3[np.logical_and(wave>210,wave<310)].sum())
+                         
+        jo2, jo3 = (irrad* (so2, so3) *np.exp(-tau)) #check unit! d_wave?
+
+        Jhart.append(jo3[np.logical_and(wave>210,wave<310)].sum()) #check unit! d_wave?
         Jsrc.append(jo2[np.logical_and(wave>122,wave<175)].sum())
         Jlya.append(jo2[wave==121.567].sum())
         J3.append(jo3.sum())
@@ -425,7 +423,7 @@ def photolysis (z,sol_zen,o2,o3):
 
 #%%
 def jfactors(o, o2, o3, n2, z, zenithangle):
-    from scipy.io import loadmat
+#    from scipy.io import loadmat
     def pathleng(heights, Xi):
         # inputs: 
         # heights -- altitdue grid
@@ -455,40 +453,45 @@ def jfactors(o, o2, o3, n2, z, zenithangle):
         nheights=nheights-1
         return pathl    
 
-    O = o[None,:]
-    O2 = o2[None,:]
-    O3 = o3[None,:]
-    N2 = n2[None,:]
-
-    path = '/home/anqil/Documents/osiris_database/ex_data/'
-    sigma = loadmat(path+'sigma.mat')
-    sO = sigma['sO']
-    sO2 = sigma['sO2']
-    sO3 = sigma['sO3']
-    sN2 = sigma['sN2']
-    irrad = sigma['irrad']
-    wave = sigma['wave']
+#    O = o.reshape(1, len(o))
+#    O2 = o2.reshape(1, len(o2))
+#    O3 = o3.reshape(1, len(o3))
+#    N2 = n2.reshape(1, len(n2))
+#
+#    path = '/home/anqil/Documents/osiris_database/ex_data/'
+#    sigma = loadmat(path+'sigma.mat')
+#    sO = sigma['sO'] #cm2
+#    sO2 = sigma['sO2'] #cm2
+#    sO3 = sigma['sO3'] #cm2
+#    sN2 = sigma['sN2'] #cm2
+#    irrad = sigma['irrad'] #cm-2s-1
+#    wave = sigma['wave'] #nm
     pathl = pathleng(z, zenithangle) * 1e2  # [m -> cm]
-    tau = np.matmul((np.matmul(sO, O) + np.matmul(sO2, O2) + np.matmul(sO3, O3) + np.matmul(sN2, N2)), pathl.T)
-
-    jO3 = irrad * sO3 * np.exp(-tau)
-    jO2 = irrad * sO2 * np.exp(-tau)
-#    jO3[tau == 0] = 0
-#    jO2[tau == 0] = 0
+#    tau = np.matmul((np.matmul(sO, O) + np.matmul(sO2, O2) + np.matmul(sO3, O3) + np.matmul(sN2, N2)), pathl.T)
+    tau = np.matmul(so2[:,None]*o2 + so3[:,None]*o3, pathl.T)
+    
+    jO3 = irrad[:,None] * so3[:,None] * np.exp(-tau)
+    jO2 = irrad[:,None] * so2[:,None] * np.exp(-tau)
 
     hartrange = (wave > 210) & (wave < 310)
     srcrange = (wave > 122) & (wave < 175)
-    lyarange = 28  # wavelength = 121.567 nm
-    jhart = np.matmul(hartrange, jO3)
-    jsrc = np.matmul(srcrange, jO2)
-    jlya = jO2[lyarange][:]
+    lyarange = 27  # wavelength = 121.567 nm
 
-    j3 = np.sum(jO3, axis=0)
-    j2 = np.sum(jO2, axis=0)
-
+#    jhart = np.matmul(hartrange, jO3) #check unit!!!
+#    jsrc = np.matmul(srcrange, jO2)
+#    jlya = jO2[lyarange][:]
+#    j3 = np.sum(jO3, axis=0) #check unit!!!
+#    j2 = np.sum(jO2, axis=0)
+    
+    jhart = (jO3[hartrange].T * np.gradient(wave)[hartrange]).sum(axis=1)
+    jsrc = (jO2[srcrange].T * np.gradient(wave)[srcrange]).sum(axis=1)
+    jlya = (jO2[lyarange].T * np.gradient(wave)[lyarange])
+    j3 = (jO3.T * np.gradient(wave)).sum(axis=1)
+    j2 = (jO2.T * np.gradient(wave)).sum(axis=1)
+    
     jhart = np.squeeze(jhart)
     jsrc = np.squeeze(jsrc)
-
+    
     return jhart, jsrc, jlya, j3, j2
 
 #%%
@@ -500,87 +503,6 @@ def oxygen_atom(m, T, o3, j3):
     kb = 8e-12 * np.exp(-2060 / T)
     o = j3 * o3 / (ka * o2 * m)# - kb * o3)
     return o
-
-
-#%%
-#def cal_o2delta(o3, T, m, z, zenithangle, gA):
-#    # z unit should be in m
-#    # concentration units should be in cm-3
-##    o3[o3<0] = 0
-#    o2 = 0.21 * m 
-#    n2 = 0.78 * m 
-#    co2 = 405e-6*m 
-#    
-#    
-##    jhart, jsrc, jlya, j3 = photolysis(z, zenithangle, o2, o3)
-#    jhart, jsrc, jlya, j3, j2 = jfactors(np.zeros(len(m)), o2, o3, n2, z, zenithangle)
-#    o = oxygen_atom(m, T, o3, j3)
-#
-#    qy_hart = 0.9 #quatumn yield
-#    qy_lya = 0.44
-#    qy_src = 0.9999 
-#    eff_o1d_o2sig = 0.77 #efficiency 
-#    
-#    #quenching
-#    def q_o2sig(n2, co2, o2, o, o3):
-#        k_n2 = 2.1e-15
-#        k_co2 = 4.2e-13
-#        k_o3 = 2.2e-11
-#        k_o = 8e-14
-#        k_o2 = 3.9e-17
-#        return n2*k_n2 + co2*k_co2 + o3*k_o3 + o*k_o + o2*k_o2
-#    
-#    def q_o2delta(T, o2, n2, o):
-#        k_o2 = 3.6e-18*np.exp(-220/T)
-#        k_n2 = 1e-20
-#        k_o = 1.3e-16
-#        return k_o2*o2 + k_n2*n2 + k_o*o
-#    
-#    def q_o1d(T, n2, o2):
-#        k_n2 = 1.8e-11*np.exp(110/T)
-#        k_o2 = 3.2e-11*np.exp(70/T)
-#        return k_n2*n2 + k_o2*o2
-#
-#    Q_o1d = q_o1d(T, n2, o2)
-#    Q_o2delta = q_o2delta(T, o2, n2, o)
-#    Q_o2sig = q_o2sig(n2, co2, o2, o, o3)
-#    
-#    A_o2sig = 0.0758
-#    A_o2delta = 2.23e-4 # 2.58e-4
-#    A_o1d = 0 #6.81e-3 #from donal's code? 
-#    
-#    prod_o1d_from_o2 = o2 * (qy_src * jsrc + qy_lya * jlya)
-#    prod_o1d_from_o3 = qy_hart * o3 * jhart
-#    prod_o1d = prod_o1d_from_o3 + prod_o1d_from_o2
-#    f_1d_o3 = prod_o1d_from_o3 / prod_o1d
-#    f_1d_o2 = prod_o1d_from_o2 / prod_o1d
-#    
-#    loss_o1d = Q_o1d + A_o1d
-#    o1d = prod_o1d / loss_o1d
-#    
-#    k_o_o = 4.7e-33*(300/T)
-#    c_o2 = 6.6 #empirical quenchin coefficient
-#    c_o = 19 #empirical quenchin coefficient
-#    k_o1d_o2 = 3.2e-11*np.exp(70/T) 
-#    prod_o2sig_barth = k_o_o * o**2 * m * o2 / (c_o2*o2 + c_o*o)
-#    prod_o2sig = eff_o1d_o2sig * k_o1d_o2 * o2 * o1d + gA * o2 + prod_o2sig_barth
-#    f_o2sig_1d = eff_o1d_o2sig * k_o1d_o2 * o2 * o1d / prod_o2sig
-#    f_o2sig_gA = gA * o2 / prod_o2sig
-#    f_o2sig_barth = prod_o2sig_barth / prod_o2sig
-#    
-#    loss_o2sig = Q_o2sig + A_o2sig
-#    o2sig = prod_o2sig / loss_o2sig
-#    
-#    prod_o2delta_from_o3 = qy_hart * o3 * jhart
-#    prod_o2delta_from_o2sig = Q_o2sig * o2sig
-#    prod_o2delta = prod_o2delta_from_o3 + prod_o2delta_from_o2sig
-#    f_o2delta_o3 = prod_o2delta_from_o3 / prod_o2delta
-#    f_o2delta_o2sig = prod_o2delta_from_o2sig / prod_o2delta
-#    
-#    loss_o2delta = Q_o2delta + A_o2delta
-#    o2delta = prod_o2delta/loss_o2delta
-#    
-#    return o2delta, f_o2delta_o2sig*f_o2sig_barth, f_o2delta_o2sig*f_o2sig_gA, f_o2delta_o2sig*f_o2sig_1d*f_1d_o3 + f_o2delta_o3, f_o2delta_o2sig*f_o2sig_1d*f_1d_o2
 
 #%%
 def cal_o2delta_new(o3_in, T, m, z, zenithangle, p, correct_neg_o3=True):
@@ -707,105 +629,186 @@ def cal_o2delta_new(o3_in, T, m, z, zenithangle, p, correct_neg_o3=True):
 #    print(max(f_gIRA[70:80])*100, max(f_gB[70:80])*100)
     return [o2delta, f_o3, f_o2, f_gA, f_gB, f_gIRA, f_barth]
 
+#%%
+#def cal_o2delta(o3, T, m, z, zenithangle, gA):
+#    # z unit should be in m
+#    # concentration units should be in cm-3
+##    o3[o3<0] = 0
+#    o2 = 0.21 * m 
+#    n2 = 0.78 * m 
+#    co2 = 405e-6*m 
+#    
+#    
+##    jhart, jsrc, jlya, j3 = photolysis(z, zenithangle, o2, o3)
+#    jhart, jsrc, jlya, j3, j2 = jfactors(np.zeros(len(m)), o2, o3, n2, z, zenithangle)
+#    o = oxygen_atom(m, T, o3, j3)
+#
+#    qy_hart = 0.9 #quatumn yield
+#    qy_lya = 0.44
+#    qy_src = 0.9999 
+#    eff_o1d_o2sig = 0.77 #efficiency 
+#    
+#    #quenching
+#    def q_o2sig(n2, co2, o2, o, o3):
+#        k_n2 = 2.1e-15
+#        k_co2 = 4.2e-13
+#        k_o3 = 2.2e-11
+#        k_o = 8e-14
+#        k_o2 = 3.9e-17
+#        return n2*k_n2 + co2*k_co2 + o3*k_o3 + o*k_o + o2*k_o2
+#    
+#    def q_o2delta(T, o2, n2, o):
+#        k_o2 = 3.6e-18*np.exp(-220/T)
+#        k_n2 = 1e-20
+#        k_o = 1.3e-16
+#        return k_o2*o2 + k_n2*n2 + k_o*o
+#    
+#    def q_o1d(T, n2, o2):
+#        k_n2 = 1.8e-11*np.exp(110/T)
+#        k_o2 = 3.2e-11*np.exp(70/T)
+#        return k_n2*n2 + k_o2*o2
+#
+#    Q_o1d = q_o1d(T, n2, o2)
+#    Q_o2delta = q_o2delta(T, o2, n2, o)
+#    Q_o2sig = q_o2sig(n2, co2, o2, o, o3)
+#    
+#    A_o2sig = 0.0758
+#    A_o2delta = 2.23e-4 # 2.58e-4
+#    A_o1d = 0 #6.81e-3 #from donal's code? 
+#    
+#    prod_o1d_from_o2 = o2 * (qy_src * jsrc + qy_lya * jlya)
+#    prod_o1d_from_o3 = qy_hart * o3 * jhart
+#    prod_o1d = prod_o1d_from_o3 + prod_o1d_from_o2
+#    f_1d_o3 = prod_o1d_from_o3 / prod_o1d
+#    f_1d_o2 = prod_o1d_from_o2 / prod_o1d
+#    
+#    loss_o1d = Q_o1d + A_o1d
+#    o1d = prod_o1d / loss_o1d
+#    
+#    k_o_o = 4.7e-33*(300/T)
+#    c_o2 = 6.6 #empirical quenchin coefficient
+#    c_o = 19 #empirical quenchin coefficient
+#    k_o1d_o2 = 3.2e-11*np.exp(70/T) 
+#    prod_o2sig_barth = k_o_o * o**2 * m * o2 / (c_o2*o2 + c_o*o)
+#    prod_o2sig = eff_o1d_o2sig * k_o1d_o2 * o2 * o1d + gA * o2 + prod_o2sig_barth
+#    f_o2sig_1d = eff_o1d_o2sig * k_o1d_o2 * o2 * o1d / prod_o2sig
+#    f_o2sig_gA = gA * o2 / prod_o2sig
+#    f_o2sig_barth = prod_o2sig_barth / prod_o2sig
+#    
+#    loss_o2sig = Q_o2sig + A_o2sig
+#    o2sig = prod_o2sig / loss_o2sig
+#    
+#    prod_o2delta_from_o3 = qy_hart * o3 * jhart
+#    prod_o2delta_from_o2sig = Q_o2sig * o2sig
+#    prod_o2delta = prod_o2delta_from_o3 + prod_o2delta_from_o2sig
+#    f_o2delta_o3 = prod_o2delta_from_o3 / prod_o2delta
+#    f_o2delta_o2sig = prod_o2delta_from_o2sig / prod_o2delta
+#    
+#    loss_o2delta = Q_o2delta + A_o2delta
+#    o2delta = prod_o2delta/loss_o2delta
+#    
+#    return o2delta, f_o2delta_o2sig*f_o2sig_barth, f_o2delta_o2sig*f_o2sig_gA, f_o2delta_o2sig*f_o2sig_1d*f_1d_o3 + f_o2delta_o3, f_o2delta_o2sig*f_o2sig_1d*f_1d_o2
+
+
 #%% 
-#if __name__ == '__main__':    
-##    path = '/home/anqil/Documents/Python/iris/old_files/'
-##    file = 'apriori_temp.nc'
-##    ds = xr.open_dataset(path+file)
-##    o3 = ds.o3_vmr.values * ds.m.values
-#    file = '/home/anqil/Documents/osiris_database/ex_data/msis_cmam_climatology_200.nc'
-#    ds = xr.open_dataset(file).interp(month=1, lat=13.5)
-#    m = (ds.o2+ds.n2+ds.o) * 1e-6 #cm-3
-#    o3 = ds.o3_vmr.interp(lst=6.876)* m #cm-3
-#    sza = [30, 60, 85, 89.9]
-#    
-#    fig, ax = plt.subplots(nrows=1, ncols=2, sharey=True, figsize=(15,5))
-#    ls = ['-', ':', '--', '-.'] 
-# 
-#    aaa = []
+if __name__ == '__main__':    
+#    path = '/home/anqil/Documents/Python/iris/old_files/'
+#    file = 'apriori_temp.nc'
+#    ds = xr.open_dataset(path+file)
+#    o3 = ds.o3_vmr.values * ds.m.values
+    file = '/home/anqil/Documents/osiris_database/ex_data/msis_cmam_climatology_200.nc'
+    ds = xr.open_dataset(file).interp(month=1, lat=13.5)
+    m = (ds.o2+ds.n2+ds.o) * 1e-6 #cm-3
+    o3 = ds.o3_vmr.interp(lst=6.876)* m #cm-3
+    sza = [30, 60, 85, 89.9]
+    
+    fig, ax = plt.subplots(nrows=1, ncols=2, sharey=True, figsize=(15,5))
+    ls = ['-', ':', '--', '-.'] 
+ 
+    aaa = []
+    for i in range(len(sza)):
+#        result = cal_o2delta(o3, ds.T.values, ds.m.values, ds.altgrid.values*1e3, sza[i])
+#        result = cal_o2delta(o3.values, ds.T.values, m.values, 
+#                             ds.z.values*1e3, sza[i], gA(ds.p, sza[i]))
+        result = cal_o2delta_new(o3.values, ds.T.values, m.values, 
+                             ds.z.values*1e3, sza[i], ds.p.values)
+        aaa.append(result)
+          
 #    for i in range(len(sza)):
-##        result = cal_o2delta(o3, ds.T.values, ds.m.values, ds.altgrid.values*1e3, sza[i])
-##        result = cal_o2delta(o3.values, ds.T.values, m.values, 
-##                             ds.z.values*1e3, sza[i], gA(ds.p, sza[i]))
-#        result = cal_o2delta_new(o3.values, ds.T.values, m.values, 
-#                             ds.z.values*1e3, sza[i], ds.p.values)
-#        aaa.append(result)
-#          
-##    for i in range(len(sza)):
-##        result = aaa[i]
-#        ax[0].plot(result[1]*100, ds.z, ls=ls[i], color='C0')
-#        ax[0].plot(result[2]*100, ds.z, ls=ls[i], color='C1')
-#        ax[0].plot(result[3]*100, ds.z, ls=ls[i], color='C2')
-#        ax[0].plot(result[4]*100, ds.z, ls=ls[i], color='C3')
-#        ax[0].plot(result[5]*100, ds.z, ls=ls[i], color='C4')
-#        ax[0].plot(result[6]*100, ds.z, ls=ls[i], color='C5')
-#    
-#        ax[1].plot(result[1]*result[0], ds.z, ls=ls[i], color='C0')
-#        ax[1].plot(result[2]*result[0], ds.z, ls=ls[i], color='C1')
-#        ax[1].plot(result[3]*result[0], ds.z, ls=ls[i], color='C2')
-#        ax[1].plot(result[4]*result[0], ds.z, ls=ls[i], color='C3')
-#        ax[1].plot(result[5]*result[0], ds.z, ls=ls[i], color='C4')
-#        ax[1].plot(result[6]*result[0], ds.z, ls=ls[i], color='C5')
-##        ax[1].plot(result[0], ds.z, ls=ls[i], color='k', label='Total {}'.format(sza[i]))
-#        
-#    plt.legend(['$O_3$', '$O_2$', '$g_A$',  '$g_B$', '$g_{IRA}$', 'Barth'])    
-#    ax[0].set(xlabel = 'Percentage',
-#              ylabel = 'Altitude / km')#,
-##              title = 'contribution to singlet delta,\n sza={}'.format(sza))
-#    ax[1].set(xlabel = 'Concentration / $cm^{-3}$',
-##              ylabel = 'z',
-##              title = 'contribution to singlet delta,\n sza={}'.format(sza),
-#              xlim = (1e-5, 1e11),
-#              ylim = (60, 100))
-#    ax[1].set_xscale('log')
-#    plt.rcParams.update({'font.size': 14})
+#        result = aaa[i]
+        ax[0].plot(result[1]*100, ds.z, ls=ls[i], color='C0')
+        ax[0].plot(result[2]*100, ds.z, ls=ls[i], color='C1')
+        ax[0].plot(result[3]*100, ds.z, ls=ls[i], color='C2')
+        ax[0].plot(result[4]*100, ds.z, ls=ls[i], color='C3')
+        ax[0].plot(result[5]*100, ds.z, ls=ls[i], color='C4')
+        ax[0].plot(result[6]*100, ds.z, ls=ls[i], color='C5')
+    
+        ax[1].plot(result[1]*result[0], ds.z, ls=ls[i], color='C0')
+        ax[1].plot(result[2]*result[0], ds.z, ls=ls[i], color='C1')
+        ax[1].plot(result[3]*result[0], ds.z, ls=ls[i], color='C2')
+        ax[1].plot(result[4]*result[0], ds.z, ls=ls[i], color='C3')
+        ax[1].plot(result[5]*result[0], ds.z, ls=ls[i], color='C4')
+        ax[1].plot(result[6]*result[0], ds.z, ls=ls[i], color='C5')
+#        ax[1].plot(result[0], ds.z, ls=ls[i], color='k', label='Total {}'.format(sza[i]))
+        
+    plt.legend(['$O_3$', '$O_2$', '$g_A$',  '$g_B$', '$g_{IRA}$', 'Barth'])    
+    ax[0].set(xlabel = 'Percentage',
+              ylabel = 'Altitude / km')#,
+#              title = 'contribution to singlet delta,\n sza={}'.format(sza))
+    ax[1].set(xlabel = 'Concentration / $cm^{-3}$',
+#              ylabel = 'z',
+#              title = 'contribution to singlet delta,\n sza={}'.format(sza),
+              xlim = (1e-5, 1e11),
+              ylim = (60, 100))
+    ax[1].set_xscale('log')
+    plt.rcParams.update({'font.size': 14})
 #    plt.savefig('/home/anqil/Documents/reportFigure/article2/contributions.png')
     
 #%% test test test ! 
-if __name__ == '__main__':    
-    path = '/home/anqil/Documents/osiris_database/iris_ver_o3/'
-    #file = 'o3_{}{}_5p1_o3false.nc'
-    file = 'o3_{}{}_mr08_o3false.nc'.format(2007,11)
-    #file = 'test_with_mr_bound.nc'
-    ds = xr.open_dataset(path+file)
-    ds = ds.isel(mjd=1)
-    # load climatology
-    path = '/home/anqil/Documents/osiris_database/ex_data/'
-    file = 'msis_cmam_climatology_z200_lat8576.nc'
-    clima = xr.open_dataset(path+file)#.interp(z=z*1e-3)
-    clima = clima.update({'m':(clima.o + clima.o2 + clima.n2)*1e-6}) #cm-3
-    clima = clima.sel(month=8)
-    o3_clima = clima.o3_vmr * clima.m #cm-3
-    
-    T_a = clima.T.interp(lat=ds.latitude, z=ds.z[ds.mr>0.8]*1e-3)
-    m_a = clima.m.interp(lat=ds.latitude, z=ds.z[ds.mr>0.8]*1e-3)
-    p_a = clima.p.interp(lat=ds.latitude, z=ds.z[ds.mr>0.8]*1e-3) 
-    
-    sol_zen = ds.sza.item()
-    o2delta = cal_o2delta_new(ds.o3[ds.mr>0.8].data, T_a.data, m_a.data, ds.z[ds.mr>0.8],
-                                            sol_zen, p_a.data)[0]
-    A_o2delta = 2.23e-4
-    o2delta_ver = o2delta * A_o2delta
-    plt.figure()
-    plt.semilogx(o2delta_ver, ds.z[ds.mr>0.8], '.', label='problem o3 VER')
-    plt.semilogx(ds.ver, ds.z, '-')
-    
-    
-    result = cal_o2delta_new(ds.o3[ds.mr>0.8].values, T_a.data, m_a.data, 
-                             ds.z[ds.mr>0.8], sol_zen, p_a.data)
-    fig, ax = plt.subplots(nrows=1, ncols=2, sharey=True, figsize=(15,5))
-    ax[1].plot(result[1]*result[0], ds.z[ds.mr>0.8], color='C0')
-    ax[1].plot(result[2]*result[0], ds.z[ds.mr>0.8], color='C1')
-    ax[1].plot(result[3]*result[0], ds.z[ds.mr>0.8], color='C2')
-    ax[1].plot(result[4]*result[0], ds.z[ds.mr>0.8], color='C3')
-    ax[1].plot(result[5]*result[0], ds.z[ds.mr>0.8], color='C4')
-    ax[1].plot(result[6]*result[0], ds.z[ds.mr>0.8], color='C5')
-    # ax[1].plot(result[0], ds.z, ls=ls[i], color='k', label='Total {}'.format(sza[i]))
-    ax[1].set(xlabel = 'Concentration / $cm^{-3}$',
-              ylabel = 'z',
-              title = 'contribution to singlet delta',
-              xlim = (1e-5, 1e11),
-              ylim = (60e3, 100e3))
-    ax[1].set_xscale('log')
-    plt.legend(['$O_3$', '$O_2$', '$g_A$',  '$g_B$', '$g_{IRA}$', 'Barth'])
-    
+#if __name__ == '__main__':    
+#    path = '/home/anqil/Documents/osiris_database/iris_ver_o3/'
+#    #file = 'o3_{}{}_5p1_o3false.nc'
+#    file = 'o3_{}{}_mr08_o3false.nc'.format(2007,11)
+#    #file = 'test_with_mr_bound.nc'
+#    ds = xr.open_dataset(path+file)
+#    ds = ds.isel(mjd=1)
+#    # load climatology
+#    path = '/home/anqil/Documents/osiris_database/ex_data/'
+#    file = 'msis_cmam_climatology_z200_lat8576.nc'
+#    clima = xr.open_dataset(path+file)#.interp(z=z*1e-3)
+#    clima = clima.update({'m':(clima.o + clima.o2 + clima.n2)*1e-6}) #cm-3
+#    clima = clima.sel(month=8)
+#    o3_clima = clima.o3_vmr * clima.m #cm-3
+#    
+#    T_a = clima.T.interp(lat=ds.latitude, z=ds.z[ds.mr>0.8]*1e-3)
+#    m_a = clima.m.interp(lat=ds.latitude, z=ds.z[ds.mr>0.8]*1e-3)
+#    p_a = clima.p.interp(lat=ds.latitude, z=ds.z[ds.mr>0.8]*1e-3) 
+#    
+#    sol_zen = ds.sza.item()
+#    o2delta = cal_o2delta_new(ds.o3[ds.mr>0.8].data, T_a.data, m_a.data, ds.z[ds.mr>0.8],
+#                                            sol_zen, p_a.data)[0]
+#    A_o2delta = 2.23e-4
+#    o2delta_ver = o2delta * A_o2delta
+#    plt.figure()
+#    plt.semilogx(o2delta_ver, ds.z[ds.mr>0.8], '.', label='problem o3 VER')
+#    plt.semilogx(ds.ver, ds.z, '-')
+#    
+#    
+#    result = cal_o2delta_new(ds.o3[ds.mr>0.8].values, T_a.data, m_a.data, 
+#                             ds.z[ds.mr>0.8], sol_zen, p_a.data)
+#    fig, ax = plt.subplots(nrows=1, ncols=2, sharey=True, figsize=(15,5))
+#    ax[1].plot(result[1]*result[0], ds.z[ds.mr>0.8], color='C0')
+#    ax[1].plot(result[2]*result[0], ds.z[ds.mr>0.8], color='C1')
+#    ax[1].plot(result[3]*result[0], ds.z[ds.mr>0.8], color='C2')
+#    ax[1].plot(result[4]*result[0], ds.z[ds.mr>0.8], color='C3')
+#    ax[1].plot(result[5]*result[0], ds.z[ds.mr>0.8], color='C4')
+#    ax[1].plot(result[6]*result[0], ds.z[ds.mr>0.8], color='C5')
+#    # ax[1].plot(result[0], ds.z, ls=ls[i], color='k', label='Total {}'.format(sza[i]))
+#    ax[1].set(xlabel = 'Concentration / $cm^{-3}$',
+#              ylabel = 'z',
+#              title = 'contribution to singlet delta',
+#              xlim = (1e-5, 1e11),
+#              ylim = (60e3, 100e3))
+#    ax[1].set_xscale('log')
+#    plt.legend(['$O_3$', '$O_2$', '$g_A$',  '$g_B$', '$g_{IRA}$', 'Barth'])
+#    
