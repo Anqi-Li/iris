@@ -70,7 +70,6 @@ def oem_cost(x_hat, y, K, Se, Sa, xa):
     cost_y = (y-K.dot(x_hat)).T.dot(Se_inv).dot(y-K.dot(x_hat))
     return cost_x, cost_y
 
-
 #%%
 def interation(forward_fun, fit_fun, y, x_initial, forward_args=(), fit_args=()):
     dx = 1e-2 * x_initial #determin step size for numerical jacobian
@@ -78,25 +77,31 @@ def interation(forward_fun, fit_fun, y, x_initial, forward_args=(), fit_args=())
     residual = y.copy()
     x_change = np.ones(len(x))
     status = 0
-    n_evaluate_max = 50
-    for n_evaluate in range(n_evaluate_max):
+
+    K = jacobian_num(forward_fun, x, dx, forward_args)
+    cost_x, cost_y = oem_cost(x, y, K, *fit_args)
+    cost_initial_x, cost_initial_y = cost_x.copy(), cost_y.copy()
+ 
+    for n_evaluate in range(30):
         K = jacobian_num(forward_fun, x, dx, forward_args)
         x_hat = fit_fun(y, K, fit_args)
-        y_fit = forward_fun(x_hat, forward_args)
+#        y_fit = forward_fun(x_hat, forward_args)
+        y_fit = K.dot(x_hat)
         residual = y-y_fit
         x_change = np.divide(abs(x_hat-x), abs(x_hat)) #check Patrick Sheese
-        cost_x, cost_y = oem_cost(x_hat, y, K, *fit_args)        
+        cost_x, cost_y = oem_cost(x_hat, y, K, *fit_args)
+                
         x = x_hat
         dx = 1e-2 * x_hat
 
         if x_change.max() < 1e-3:
             status = 1
             break
-        if cost_y < 1e-2:
-            status = 2
-            break
-    
-    return x_hat, y_fit, K, residual, x_change, status, cost_x, cost_y
+#        if cost_y < 1e-3:
+#            status = 2
+#            break
+    return x_hat, y_fit, K, residual, x_change, status, cost_x, cost_y, cost_initial_x, cost_initial_y
+
 
 
 #%% define which forward model and which fitting algorithm and their outputs
@@ -116,46 +121,49 @@ def loop_over_images(i):
     
     try:
         print('image', i, ' in month ', month)
-        y_org = data.ver.isel(mjd=i).where(data.mr_rel.isel(mjd=i)>0.8, drop=True).values
-        z_org = data.z[data.mr_rel.isel(mjd=i)>0.8].values #km
-        #z = np.sort(np.append(z_org, z_org[:-1]+np.diff(z_org)/2)) #km
-#        y = np.interp(z, z_org, y_org) #photon  cm-3 s-1
-        y = y_org
-        z = z_org #km
+        y_org = data.ver.isel(mjd=i).where(data.mr_rel.isel(mjd=i)>0.8, drop=True)
+        z_org = data.z[data.mr_rel.isel(mjd=i)>0.8] #km
+        z_append = np.append(z_org, data.z.where(data.z>z_org.max(), drop=True))
+        y_append = y_org.reindex(z=z_append).fillna(0)
+        y = y_append.values
+        z = z_append #km
         x_initial = clima.o3.sel(lat=data.latitude.isel(mjd=i),
                                  lst=data.lst.isel(mjd=i), 
-                                 method='nearest').interp(z=z_org).values #cm-3
+                                 method='nearest').interp(z=z).values #cm-3
         forward_args = (clima.T.sel(lat=data.latitude.isel(mjd=i),
-                                    method='nearest').interp(z=z_org).values, #K
+                                    method='nearest').interp(z=z).values, #K
                         clima.m.sel(lat=data.latitude.isel(mjd=i),
-                                    method='nearest').interp(z=z_org).values, #cm-3
-                        z_org*1e3, #m
+                                    method='nearest').interp(z=z).values, #cm-3
+                        z*1e3, #m
                         data.sza.isel(mjd=i).values, #degree
                         clima.p.sel(lat=data.latitude.isel(mjd=i), #Pa
-                                    method='nearest').interp(z=z_org).values,
+                                    method='nearest').interp(z=z).values,
                         False) #m
         xa = x_initial
         Sa = np.diag((1*xa)**2)
-        Se = np.diag(data.ver_error.isel(mjd=i).where(data.mr_rel.isel(mjd=i)>0.8, drop=True))
+#        Se = np.diag(data.ver_error.isel(mjd=i).where(data.mr_rel.isel(mjd=i)>0.8, drop=True))
+        error_2 = data.ver_error.isel(mjd=i).where(data.mr_rel.isel(mjd=i)>0.8, drop=True
+                                      ).reindex(z=z_append, method='nearest')
+        Se = np.diag(error_2)
         fit_args = (Se, Sa, xa)
         
         result = interation(forward, fit, y, x_initial, forward_args=forward_args, fit_args=fit_args)
-        x_hat, y_fit, K, residual, x_change, status, cost_x, cost_y = result
-        o3 = xr.DataArray(x_hat, coords={'z': z}, dims='z').reindex(z=data.z)
-        residual = xr.DataArray(residual, coords={'z': z}, dims='z').reindex(z=data.z)
+        (x_hat, y_fit, K, residual, x_change, status, cost_x, cost_y, 
+         cost_initial_x, cost_initial_y) = result
+        o3 = xr.DataArray(x_hat, coords={'z': z}, dims='z').reindex(z=z_org).reindex(z=data.z)
+        residual = xr.DataArray(residual, coords={'z': z}, dims='z').reindex(z=z_org).reindex(z=data.z)
         return (data.mjd[i], data.sza[i], data.lst[i], data.longitude[i], data.latitude[i],
-                o3, residual, status, cost_x, cost_y)
+                o3, residual, status, cost_x, cost_y, cost_initial_x, cost_initial_y)
     except:
         print('something went wrong for image ', i)
 #        raise
         pass
     
-
 #%% load ver data
 year = 2008
 month = 10
 
-path = '/home/anqil/Documents/osiris_database/iris_ver_o3/'
+path = '/home/anqil/Documents/osiris_database/iris_ver_o3/ver/'
 filenames = 'ver_{}{}_v5p0.nc'.format(year, str(month).zfill(2))
 data = xr.open_dataset(path+filenames)
 
@@ -168,7 +176,8 @@ clima = clima.sel(month=month)
 o3_clima = clima.o3_vmr * clima.m #cm-3
 clima = clima.update({'o3': o3_clima})
 
-#%% run and save in ds
+#%%
+
 result=[]
 for i in range(len(data.mjd)):#image_lst: #range(100):
     result.append(loop_over_images(i))
@@ -191,6 +200,10 @@ ds = xr.Dataset({'o3': o3_iris,
                           np.stack([result[i][8] for i in range(len(result))])),
                 'cost_y':(['mjd'], 
                           np.stack([result[i][9] for i in range(len(result))])),
+                'cost_init_x':(['mjd'], 
+                          np.stack([result[i][10] for i in range(len(result))])),
+                'cost_init_y':(['mjd'], 
+                          np.stack([result[i][11] for i in range(len(result))])),
                 'sza':(['mjd'], 
                         np.stack([result[i][1] for i in range(len(result))])),
                 'lst':(['mjd'], 
@@ -204,12 +217,13 @@ ds = xr.Dataset({'o3': o3_iris,
                             {'units':'degree N'}),
                 }, attrs={'ozone fitting':
                     '''no correction on negative ozone in forward model, 
-                        only select mr>0.8 in VER data.'''
+                       only select mr>0.8 in VER data, but extend 0 measurement up to 130km.'''
                 })    
-                         
+                    
+
 #%%
 path = '/home/anqil/Documents/osiris_database/iris_ver_o3/'
-ds.to_netcdf(path+'o3_{}{}_v6p0.nc'.format(year, str(month).zfill(2)))
+ds.to_netcdf(path+'o3_{}{}_v6p1.nc'.format(year, str(month).zfill(2)))
 
 #%%
 #y_org = data.ver.isel(mjd=0).where(data.mr_rel.isel(mjd=0)>0.8, drop=True).values
