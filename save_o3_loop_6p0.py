@@ -152,8 +152,8 @@ def loop_over_images(i):
     
 
 #%% load ver data
-year = 2008
-month = 10
+year = 2007
+month = 11
 
 path = '/home/anqil/Documents/osiris_database/iris_ver_o3/'
 filenames = 'ver_{}{}_v5p0.nc'.format(year, str(month).zfill(2))
@@ -209,7 +209,7 @@ ds = xr.Dataset({'o3': o3_iris,
                          
 #%%
 path = '/home/anqil/Documents/osiris_database/iris_ver_o3/'
-ds.to_netcdf(path+'o3_{}{}_v6p0.nc'.format(year, str(month).zfill(2)))
+ds.to_netcdf(path+'o3_{}{}_v6p0_tau_top.nc'.format(year, str(month).zfill(2)))
 
 #%%
 #y_org = data.ver.isel(mjd=0).where(data.mr_rel.isel(mjd=0)>0.8, drop=True).values

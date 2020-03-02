@@ -32,7 +32,7 @@ file = '/home/anqil/Documents/osiris_database/ir_stray_light_corrected.nc'
 ir = xr.open_dataset(file)
 #orbit = 37580
 #ir = ir.where(ir.orbit==orbit, drop=True)
-orbit_index = 45#105#45
+orbit_index = 105#45
 orbit_no = np.unique(ir.orbit)[orbit_index]
 ir = ir.where(ir.orbit==orbit_no, drop=True)
 #print(num2date(ir.mjd,units))
@@ -53,22 +53,17 @@ ir.sza.plot(ax=ax[1])
 ax[1].axhline(y=90)
 ax[0].axvline(x=ir.mjd[828])
 
-#%% load IRIS result
-file = '/home/anqil/Documents/osiris_database/iris_ver_o3/semi-old/{}{}_v5.nc'
-ds = xr.open_dataset(file.format(num2date(day_mjd_lst, units)[0].year,
-                                 str(num2date(day_mjd_lst, units)[0].month).zfill(2)))
-data_iris = ds.sel(mjd=slice(day_mjd_lst[0], day_mjd_lst[-1]))
-#data_iris['z'] = data_iris.z*1e-3 # to km 
-
 #%% load IRIS result from 2 files
-file = '/home/anqil/Documents/osiris_database/iris_ver_o3/ver_{}{}_v5p0.nc'
+file = '/home/anqil/Documents/osiris_database/iris_ver_o3/ver/ver_{}{}_v5p0.nc'
 ds1 = xr.open_dataset(file.format(num2date(day_mjd_lst, units)[0].year,
                                  str(num2date(day_mjd_lst, units)[0].month).zfill(2))) 
-file = '/home/anqil/Documents/osiris_database/iris_ver_o3/o3_{}{}_mr08_o3false.nc'
+#file = '/home/anqil/Document1s/osiris_database/iris_ver_o3/o3_v6p2_temp/o3_{}{}_v6p0.nc'
+file = '/home/anqil/Documents/osiris_database/iris_ver_o3/o3/o3_{}{}_v6p2.nc'
 ds2 = xr.open_dataset(file.format(num2date(day_mjd_lst, units)[0].year,
                                  str(num2date(day_mjd_lst, units)[0].month).zfill(2))) 
 data_iris = ds1.merge(ds2)
 data_iris = data_iris.sel(mjd=slice(day_mjd_lst[0], day_mjd_lst[-1]))
+o3_filter = np.logical_and((data_iris.status != 0), (data_iris.cost_y<=2e2))
 
 #%% load smr data (needed to be interpolated)
 path = '/home/anqil/Documents/osiris_database/ex_data/'
@@ -83,8 +78,9 @@ mr_threshold = 0.8
 o3_vmr_smr = data_smr.o3_vmr.where(data_smr.mr>mr_threshold)
 Av = 6.023e23 #Avogadro's number: molec/mol
 R = 8.31 # gas constant: J/mol/K
-m_smr = Av * data_smr.pressure / (R * data_smr.temperature) * 1e-6 # number density of air cm-3
-o3_smr = m_smr * o3_vmr_smr # cm-3
+#m_smr = Av * data_smr.pressure / (R * data_smr.temperature) * 1e-6 # number density of air cm-3
+#o3_smr = m_smr * o3_vmr_smr # cm-3
+o3_smr = data_smr.density * o3_vmr_smr # cm-3
 
 #%% load os data
 path = '/home/anqil/Documents/osiris_database/odin-osiris.usask.ca/Level2/CCI/OSIRIS_v5_10/'
@@ -102,11 +98,11 @@ o3_vmr_os = o3_os / m_os
 o3_vmr_os_error = o3_os_error / m_os
 
 #%% load climatology
-path = '/home/anqil/Documents/osiris_database/ex_data/'
-file = 'msis_cmam_climatology_z200_lat8576.nc'
-clima = xr.open_dataset(path+file)#.interp(z=z*1e-3)
-clima = clima.update({'m':(clima.o + clima.o2 + clima.n2)*1e-6}) #cm-3
-o3_clima = clima.o3_vmr * clima.m #cm-3
+#path = '/home/anqil/Documents/osiris_database/ex_data/'
+#file = 'msis_cmam_climatology_z200_lat8576.nc'
+#clima = xr.open_dataset(path+file)#.interp(z=z*1e-3)
+#clima = clima.update({'m':(clima.o + clima.o2 + clima.n2)*1e-6}) #cm-3
+#o3_clima = clima.o3_vmr * clima.m #cm-3
 
 #%% VER 1 orbit plot
 #fig, ax = plt.subplots(nrows=1, ncols=2, sharey=True, figsize=(15,5))
@@ -116,10 +112,15 @@ gs = GridSpec(1, 2, width_ratios=[3, 1], wspace=0.02)
 ax1 = fig.add_subplot(gs[0])
 ax2 = fig.add_subplot(gs[1])
 
-data_iris.ver.where(data_iris.mr>0.8, drop=True).plot(ax=ax1, y='z', 
+im = data_iris.ver.where(data_iris.mr>0.8, drop=True).plot(ax=ax1, y='z', 
                    robust=True, 
                   norm=LogNorm(vmin=1e5, vmax=1e6),
-                  cbar_kwargs={'label':'VER / ($cm^{-3}$ $s^{-1}$)'})
+#                  vmin=1e5, vmax=1e6,
+                  add_colorbar=False)
+#                  cbar_kwargs={'label':'VER / ($cm^{-3}$ $s^{-1}$)'})
+#im.cmap.set_yticklabels([1e5, 1e6])
+plt.colorbar(im)
+
 idx = [40, 570, 915, 1250]
 for i in idx:
     ax1.axvline(x=data_iris.mjd[i], color='k')
@@ -141,13 +142,12 @@ ax11.set_xticklabels(np.round(data_iris.longitude.interp(
 
 data_iris.ver.where(data_iris.mr>mr_threshold, drop=True).isel(mjd=idx).plot.line(
         ax=ax2, y='z', xscale='log', marker='.', add_legend=False)
-#ax2.legend(['Image 1', 'Image 2', 'Image 3', 'Image 4'])
-ax2.legend(['Im {}'.format(i) for i in idx])
+ax2.legend(['{}'.format(i) for i in idx])
 ax2.set_yticklabels([])
 ax2.set(ylabel='',
         xlabel='VER / ($cm^{-3}$ $s^{-1}$)',
         title='Selected images')
-ax2.set_xlim([1e3, 1e7])
+ax2.set_xlim([134, 1e7])
 
 
 plt.rcParams.update({'font.size': 14})
@@ -180,7 +180,7 @@ fig = plt.figure(figsize=(15,10))
 ax0 = fig.add_subplot(grid_2d[0,:])
 ax1 = fig.add_subplot(grid_2d[1,:], sharey=ax0)
 ax2 = fig.add_subplot(grid_1d[2,0])
-ax3 = fig.add_subplot(grid_1d[2,1], sharey=ax2)
+ax3 = fig.add_subplot(grid_1d[2,1])
 
 cmap = 'RdBu_r'#'twilight_shifted'#'RdBu_r'
 vmin = 1e7
@@ -201,12 +201,10 @@ ax0.text(0.25, 0.87, 'SMR', fontsize=18, transform=ax0.transAxes)
 
 im = ax1.pcolor(day_mjd_lst,
                 data_iris.z, 
-                data_iris.o3.where(data_iris.mr>mr_threshold).reindex({'mjd': day_mjd_lst}).T, 
+#                data_iris.o3.where(data_iris.mr>mr_threshold).reindex({'mjd': day_mjd_lst}).T, 
+                data_iris.o3.where(o3_filter).reindex({'mjd': day_mjd_lst}).T,
                 norm=LogNorm(vmin=vmin, vmax=vmax),
                 cmap=cmap)
-#im = data_iris.o3.where(data_iris.mr>mr_threshold).plot(y='z', 
-#                       ax=ax1, norm=LogNorm(vmin=1e7, vmax=1e12),
-#                       ylim=(60,100), add_colorbar=False, cmap='RdBu_r')
 
 o3_os[1:].plot(y='altitude', ax=ax1, norm=LogNorm(vmin=vmin, vmax=vmax), 
            cmap=cmap, add_colorbar=False)
@@ -254,9 +252,13 @@ ax2.set(#title='Number density',
           ylim=[10, 100])
 ax2.legend(loc='lower left')
 
-m_iris = interp1d(data_smr.altitude.sel(mjd=i_mjd, method='nearest'), 
-                 data_smr.density.sel(mjd=i_mjd, method='nearest'),
-                fill_value="extrapolate")(data_iris.z)
+m_iris = np.exp(interp1d(data_smr.altitude.sel(mjd=i_mjd, method='nearest'), 
+                 np.log(data_smr.density.sel(mjd=i_mjd, method='nearest')),
+                fill_value="extrapolate")(data_iris.z))
+#m_iris = clima.m.sel(month=num2date(data_iris.mjd, units)[0].month,
+#                         lat=data_iris.latitude.sel(mjd=i_mjd,method='nearest'),
+#                         method='nearest').interp(z=data_iris.z)
+
 
 ax3.semilogx(o3_vmr_os.sel(mjd=i_mjd, method='nearest')*1e6,
              data_os.altitude, '*',

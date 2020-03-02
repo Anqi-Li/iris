@@ -149,34 +149,10 @@ def f(i):
                 
                 y_fit = xr.DataArray(y_fit, coords={'pixel': h.pixel}, 
                                      dims='pixel').reindex(pixel=l1.pixel)/normalize                     
-#                print('get ozone')
-                #lsq fit to get ozone
-#                o2delta_meas = x / A_o2delta # cm-3
-#                o2delta_meas[o2delta_meas<0] = xa[o2delta_meas<0]/ A_o2delta / 1000    
-##                o2delta_meas[o2delta_meas<0] = 0
-##                z_mr = z[mr>0.8]
-#                res_lsq = least_squares(residual,
-##                                        o3_a.values[mr>0.8], #initial guess
-#                                        o3_a.interp(z=z*1e-3).values,
-##                                        method='lm',
-##                                        xtol = 1e-8,
-#                                        bounds=(0, np.inf), verbose=2, 
-##                                        loss='cauchy', #'cauchy'?
-#                                        max_nfev=30, #temp
-#                                        args=(T_a.interp(z=z*1e-3).values,
-#                                              m_a.interp(z=z*1e-3).values,
-#                                              z,  #in meter
-#                                              sol_zen, 
-#                                              p_a.interp(z=z*1e-3).values,
-#                                              o2delta_meas))
-##                o3_iris = xr.DataArray(res_lsq.x, coords={'z': z_mr}, dims='z').reindex(z=z).data
-##                resi = xr.DataArray(res_lsq.fun, coords={'z': z_mr}, dims='z').reindex(z=z).data
-#                o3_iris = res_lsq.x
-#                resi = res_lsq.fun
                 
                 return (x, xa, np.diag(Sm), np.diag(Ss), mr, mr_rel, 
                         o3_a.values, day_mjd_lst[i].values, 
-                        y_fit, cost_x, cost_y, A_rel)
+                        y_fit, cost_x, cost_y, Sm, Ss, A_rel)
          
             except:
                 print('something is wrong ({})'.format(i))
@@ -242,9 +218,6 @@ if __name__ == '__main__':
     #====retireval grid
     z = np.arange(50e3, 130e3, 1e3) # m
     z_top = z[-1] + 1e3 # for jacobian
-
-#%%
-
 
 #%%
 #    result = []
@@ -357,9 +330,40 @@ if __name__ == '__main__':
 
 
 #%%
+#    fig = plt.figure()
+#    ds.mr.plot.line(y='z')
+#    plt.title('absolute measurement reponse')
+
+#%%
+    Ss = result[0][-2]
+    Sm = result[0][-3]
     fig = plt.figure()
-    ds.mr.plot.line(y='z')
-    plt.title('absolute measurement reponse')
+    plt.semilogx(np.sqrt(np.diag(Ss)), ds.z, np.sqrt(np.diag(Sm)), ds.z)
+    plt.legend(['smoothing error', 'retrieval noise'])
+    plt.title('diag element of Ss and Sm (sqrt)')
+    plt.xlabel('VER unit')
+    fig.savefig('/home/anqil/Documents/reportFigure/article2/iris_Ss_Sm_sample.png',
+            bbox_inches = "tight")   
+
+    fig = plt.figure()
+    plt.plot(np.diag(Sm, k=0),label='k=0')
+    plt.plot(np.diag(Sm, k=1), label='k=1')
+    plt.plot(np.diag(Sm, k=2),  label='k=2')
+    plt.plot(np.diag(Sm, k=3),  label='k=3')
+    plt.legend()
+    plt.title('diagonal elements of Sm')
+    plt.ylabel('VER unit square')
+    plt.xlabel('element index')
+    fig.savefig('/home/anqil/Documents/reportFigure/article2/iris_Sm_matrix_sample.png',
+            bbox_inches = "tight")
+    
+#%%
+    fig = plt.figure()
+    (np.sqrt(ds.ver_error)/ds.ver).where(ds.mr_rel>0.8).plot(y='z')
+    plt.title('error/ver in percentage')
+    plt.legend(['where $MR^{frac}$ > 0.8'])
+    fig.savefig('/home/anqil/Documents/reportFigure/article2/iris_error_percent_sample.png',
+            bbox_inches = "tight")
 
 #%%
     AVK_rel = result[0][-1]
@@ -369,14 +373,30 @@ if __name__ == '__main__':
     above = plt.plot(AVK_rel[50::2, :].T, ds.z, color='C2')
 #    plt.title('relative averaging kernel, mesurement response')
     plt.ylabel('Altitude / km')
-    plt.xlabel('$AVK_{frac}$ ')
-    plt.legend(['$MR_{frac}$'] + ['$AVKs_{frac}$'])
-    plt.legend([mr[0], below[0], above[0]], ['$MR_{frac}$', '$AVK_{frac}$ below 100 km', '$AVK_{frac}$ above 100 km'])
+    plt.xlabel('AVK or MR')
+#    plt.legend(['$MR^{frac}$'] + ['$AVKs^{frac}$'])
+    plt.legend([mr[0], below[0], above[0]], ['$MR^{frac}$', '$AVK^{frac}$ below 100 km', '$AVK^{frac}$ above 100 km'])
 #    plt.legend(['$MR_{frac}$'] + ['{} km'.format(i) for i in (ds.z.values[::10]).astype(int)])
     plt.title('')
-    fig.savefig('/home/anqil/Documents/reportFigure/article2/iris_AVK_MR_sample.png',
+    fig.savefig('/home/anqil/Documents/reportFigure/article2/iris_ver_AVK_MR_sample.png',
             bbox_inches = "tight")   
     
+#%%
+    from scipy.signal import chirp, find_peaks, peak_widths
+    P, W = [], []
+    for i in range(len(AVK_rel)):
+        x = AVK_rel[i,:]
+        peaks, _ = find_peaks(x, threshold=0.1)
+        results_half = peak_widths(x, peaks, rel_height=0.5)
+        if len(peaks) == 0:
+            P.append(np.nan)
+        else:
+            P.append(peaks.item())
+        if len(results_half[0]) == 0:
+            W.append(np.nan)
+        else:
+            W.append(results_half[0].item())
+            
 #%%
     fig = plt.figure()
     ds.ver_apriori.plot.line(y='z', add_legend=False, ls='-', xscale='log', color='k')

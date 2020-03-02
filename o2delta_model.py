@@ -414,9 +414,9 @@ def photolysis (z, sol_zen, o2, o3):
         tau=(so2*(np.exp(np.interp(z_paths,z,np.log(o2)))).sum()+
              so3*(np.interp(z_paths,z,o3)).sum()) * path_step *1e2 #m-->cm 
                          
-        jo2, jo3 = (irrad* (so2, so3) *np.exp(-tau)) #check unit! d_wave?
+        jo2, jo3 = (irrad* (so2, so3) *np.exp(-tau)) #
 
-        Jhart.append(jo3[np.logical_and(wave>210,wave<310)].sum()) #check unit! d_wave?
+        Jhart.append(jo3[np.logical_and(wave>210,wave<310)].sum()) #
         Jsrc.append(jo2[np.logical_and(wave>122,wave<175)].sum())
         Jlya.append(jo2[wave==121.567].sum())
         J3.append(jo3.sum())
@@ -452,12 +452,17 @@ def pathleng(heights, Xi):
         heights = heights[:-1]
         nheights=nheights-1
         return pathl 
+    
 #%%
-def jfactors(o2, o3, z, zenithangle):
-#    from scipy.io import loadmat
-
+def jfactors(o2_in, o3_in, z, zenithangle):
+    #z in m
+    #o2, o3 in cm-3
+    o2 = o2_in.copy()
+    o3 = o3_in.copy()
+    o2[-1] *= 10.
     pathl = pathleng(z, zenithangle) * 1e2  # [m -> cm]
     tau = np.matmul(so2[:,None]*o2 + so3[:,None]*o3, pathl.T)
+#    tau[:, -1] = tau[:, -1]*10 #compensate the absorption above 100km
     
     jO3 = irrad[:,None] * so3[:,None] * np.exp(-tau)
     jO2 = irrad[:,None] * so2[:,None] * np.exp(-tau)
@@ -611,6 +616,7 @@ def cal_o2delta_new(o3_in, T, m, z, zenithangle, p, correct_neg_o3=True):
 
 
 #%% 
+top = 200
 if __name__ == '__main__':    
 #    path = '/home/anqil/Documents/Python/iris/old_files/'
 #    file = 'apriori_temp.nc'
@@ -618,7 +624,7 @@ if __name__ == '__main__':
 #    o3 = ds.o3_vmr.values * ds.m.values
     file = '/home/anqil/Documents/osiris_database/ex_data/msis_cmam_climatology_200.nc'
     ds = xr.open_dataset(file).interp(month=1, lat=13.5)
-    ds = ds.sel(z=slice(0,100))
+    ds = ds.sel(z=slice(0,top))
     m = (ds.o2+ds.n2+ds.o) * 1e-6 #cm-3
     o3 = ds.o3_vmr.interp(lst=6.876)* m #cm-3
     sza = [30, 60, 85, 89.9]
@@ -661,32 +667,32 @@ if __name__ == '__main__':
 #              ylabel = 'z',
 #              title = 'contribution to singlet delta,\n sza={}'.format(sza),
               xlim = (1e-5, 1e11),
-              ylim = (60, 150),
+              ylim = (60, 100),
               )
     ax[1].set_xscale('log')
     plt.rcParams.update({'font.size': 14})
 #    plt.savefig('/home/anqil/Documents/reportFigure/article2/contributions.png')
 
 #%%
-#if __name__ == '__main__':    
-#    file = '/home/anqil/Documents/osiris_database/ex_data/msis_cmam_climatology_200.nc'
-#    ds = xr.open_dataset(file).interp(month=1, lat=13.5)
-#    ds = ds.sel(z=slice(0,100))
-#    m = (ds.o2+ds.n2+ds.o) * 1e-6 #cm-3
-#    o3 = (ds.o3_vmr.interp(lst=6.876)* m).values #cm-3
-#    o2 = ds.o2.values*1e-6
-#    z = ds.z.values
-#    sza = [30, 60, 85, 89.9]
-#    fig, ax = plt.subplots(1, 3, sharey=True)
-#    for i in range(len(sza)):
-#        jhart, jsrc, jlya, j3, j2 = jfactors(o2, o3, z, sza[i])
-#    
-#        ax[0].plot(jhart,z)
-#        ax[0].set(ylim=(0,100))
-#        ax[1].plot(jsrc, z)
-#        ax[2].plot(jlya,z)
-#
-#    
+if __name__ == '__main__':    
+    file = '/home/anqil/Documents/osiris_database/ex_data/msis_cmam_climatology_200.nc'
+    ds = xr.open_dataset(file).interp(month=1, lat=13.5)
+    ds = ds.sel(z=slice(0,top))
+    m = (ds.o2+ds.n2+ds.o) * 1e-6 #cm-3
+    o3 = (ds.o3_vmr.interp(lst=6.876)* m).values #cm-3
+    o2 = ds.o2.values*1e-6
+    z = ds.z.values
+    sza = [30, 60, 85, 89.9]
+    fig, ax = plt.subplots(1, 3, sharey=True)
+    for i in range(len(sza)):
+        jhart, jsrc, jlya, j3, j2 = jfactors(o2, o3, z, sza[i])
+    
+        ax[0].plot(jhart,z)
+        ax[0].set(ylim=(0,100))
+        ax[1].plot(jsrc, z)
+        ax[2].plot(jlya,z)
+
+    
 #%% test test test ! 
 #if __name__ == '__main__':    
 #    path = '/home/anqil/Documents/osiris_database/iris_ver_o3/'
