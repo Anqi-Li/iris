@@ -50,7 +50,8 @@ data_interp = xr.DataArray(data_interp, coords=[ir.mjd, alts_interp], dims=['mjd
 fig, ax = plt.subplots(nrows=2, ncols=1, sharex=True, figsize=(15,5))
 data_interp.plot(ax=ax[0], y='altitude', robust=True, add_colorbar=False, norm=LogNorm(vmin=1e9, vmax=1e13), cmap='viridis')
 ir.sza.plot(ax=ax[1])
-ax[1].axhline(y=90)
+(ir.latitude+90).plot(ax=ax[1])
+ax[1].axhline(y=90, color='k')
 ax[0].axvline(x=ir.mjd[828])
 
 #%% load IRIS result from 2 files
